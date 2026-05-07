@@ -218,10 +218,13 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 仓库授权令牌
       with:
-        tag_name: ${{ steps.tag.outputs.release_tag }}  # 版本标签名
-        body_path: release.txt                          # 发布说明文件
-        files: ${{ env.FIRMWARE }}/*                    # 要上传的固件文件
-
+        tag: ${{ steps.tag.outputs.release_tag }}    # 版本标签名
+        bodyFile: release.txt                        # 发布说明文件
+        artifacts: ${{ env.FIRMWARE }}/*             # 要上传的固件文件
+        allowUpdates: true                           # 允许更新已存在的发布，避免重复发布报错
+        draft: false                                 # 不设为草稿，直接发布正式版本
+        prerelease: false                            # 不设为测试版，发布正式稳定版
+      
     # 自动清理旧的Workflow运行记录
     - name: Delete workflow runs
       uses: Mattraks/delete-workflow-runs@v2
@@ -235,7 +238,7 @@ jobs:
       # 开启版本发布且未取消任务才执行
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       with:
-        keep_latest: 3     # 只保留最新3个版本
-        delete_tags: true  # 同步删除版本标签
+        min-versions-to-keep: 3           # 只保留最新3个版本
+        num-old-versions-to-delete: 999   # 最多删除 999 个旧版本
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 仓库授权令牌
