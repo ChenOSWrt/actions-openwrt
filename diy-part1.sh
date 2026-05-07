@@ -10,9 +10,6 @@
 # See /LICENSE for more information.
 #
 
-# 取消注释一个软件源（取消 feeds.conf.default 中 helloworld 源的注释）
-#sed -i 's/^#\(.*helloworld\)/\1/' feeds.conf.default
-
 # 清空原有软件源配置（彻底清空）
 > feeds.conf.default
 
@@ -21,6 +18,12 @@ echo 'src-git packages https://github.com/coolsnowwolf/packages' >>feeds.conf.de
 echo 'src-git luci https://github.com/coolsnowwolf/luci.git;openwrt-23.05' >>feeds.conf.default
 echo 'src-git routing https://github.com/coolsnowwolf/routing' >>feeds.conf.default
 echo 'src-git telephony https://github.com/coolsnowwolf/telephony.git' >>feeds.conf.default
+
+# immortalwrt-openwrt-24.10
+# echo 'src-git packages https://github.com/immortalwrt/packages.git;openwrt-24.10' >>feeds.conf.default
+# echo 'src-git luci https://github.com/immortalwrt/luci.git;openwrt-24.10' >>feeds.conf.default
+# echo 'src-git routing https://github.com/openwrt/routing.git;openwrt-24.10' >>feeds.conf.default
+# echo 'src-git telephony https://github.com/openwrt/telephony.git;openwrt-24.10' >>feeds.conf.default
 
 # 开启 helloworld 插件源（科学上网）
 # echo 'src-git helloworld https://github.com/fw876/helloworld.git' >>feeds.conf.default
