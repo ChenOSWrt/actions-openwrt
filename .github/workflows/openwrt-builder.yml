@@ -11,7 +11,7 @@
 #
 
 # 定义当前GitHub Actions工作流名称
-name: OpenWrt Builder
+name: ChenOSWrt 固件编译
 
 # 定义工作流触发条件
 on:
