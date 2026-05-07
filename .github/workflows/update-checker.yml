@@ -11,7 +11,7 @@
 #
 
 # 工作流名称：源码更新检测
-name: ChenOSWrt 固件更新
+name: ChenOSWrt 自动更新固件
 
 # 全局环境变量
 env:
