@@ -16,7 +16,7 @@
 # 清空原有软件源配置（彻底清空）
 > feeds.conf.default
 
-# LEDE
+# LEDE-20251001
 echo 'src-git packages https://github.com/coolsnowwolf/packages' >>feeds.conf.default
 echo 'src-git luci https://github.com/coolsnowwolf/luci.git;openwrt-23.05' >>feeds.conf.default
 echo 'src-git routing https://github.com/coolsnowwolf/routing' >>feeds.conf.default
