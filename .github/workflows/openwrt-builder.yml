@@ -212,18 +212,15 @@ jobs:
 
     # 将固件发布到GitHub Releases
     - name: Upload firmware to release
-      uses: ncipollo/release-action@v1
+      uses: softprops/action-gh-release@v3
       # 标签生成成功且未取消任务才执行
       if: steps.tag.outputs.status == 'success' && !cancelled()
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 仓库授权令牌
       with:
-        tag: ${{ steps.tag.outputs.release_tag }}    # 版本标签名
-        bodyFile: release.txt                        # 发布说明文件
-        artifacts: ${{ env.FIRMWARE }}/*             # 要上传的固件文件
-        allowUpdates: true                           # 允许更新已存在的发布，避免重复发布报错
-        draft: false                                 # 不设为草稿，直接发布正式版本
-        prerelease: false                            # 不设为测试版，发布正式稳定版
+        tag_name: ${{ steps.tag.outputs.release_tag }}
+        body_path: release.txt
+        files: ${{ env.FIRMWARE }}/*
       
     # 自动清理旧的Workflow运行记录
     - name: Delete workflow runs
