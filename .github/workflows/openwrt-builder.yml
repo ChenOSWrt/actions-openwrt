@@ -46,7 +46,7 @@ jobs:
     steps:
     # 检出仓库代码到运行环境
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     # 初始化编译环境、安装依赖、清理冗余
     - name: Initialization environment
@@ -164,7 +164,7 @@ jobs:
 
     # 上传完整bin编译目录为制品
     - name: Upload bin directory
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       # 编译成功且开启上传bin目录才执行
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
       with:
@@ -188,7 +188,7 @@ jobs:
 
     # 上传纯净固件为GitHub Actions制品
     - name: Upload firmware directory
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       # 目录整理成功且未取消任务才执行
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
@@ -239,6 +239,5 @@ jobs:
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       with:
         min-versions-to-keep: 3           # 只保留最新3个版本
-        num-old-versions-to-delete: 999   # 最多删除 999 个旧版本
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 仓库授权令牌
