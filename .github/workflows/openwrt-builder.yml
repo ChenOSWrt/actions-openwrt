@@ -11,7 +11,7 @@
 #
 
 # 定义当前GitHub Actions工作流名称
-name: ChenOSWrt 固件一键编译
+name: ChenOSWrt 手动编译固件
 
 # 定义工作流触发条件
 on:
