@@ -10,50 +10,60 @@
 # See /LICENSE for more information.
 #
 
+# 工作流名称：源码更新检测
 name: Update Checker
 
+# 全局环境变量
 env:
-  REPO_URL: https://github.com/coolsnowwolf/lede
-  REPO_BRANCH: master
+  REPO_URL: https://github.com/coolsnowwolf/lede  # 要检测的OpenWrt源码仓库地址
+  REPO_BRANCH: master                             # 检测的源码分支
 
+# 触发方式
 on:
-  workflow_dispatch:
-#  schedule:
-#    - cron: 0 */18 * * *
+  workflow_dispatch:  # 允许手动点击运行
+#  schedule:           # 定时自动检测（目前被注释，未开启）
+#    - cron: 0 */18 * * *  # 每18小时检查一次（取消注释即可启用）
 
+# 任务：检查源码是否更新
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # 运行在最新版Ubuntu虚拟机上
 
+    # 执行步骤
     steps:
 
+    # 第一步：获取源码最新的提交版本号(Commit Hash)
     - name: Get Commit Hash
       id: getHash
       run: |
-        git clone --depth 1 $REPO_URL -b $REPO_BRANCH .
-        echo "commitHash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+        git clone --depth 1 $REPO_URL -b $REPO_BRANCH .  # 浅克隆源码，只拉最新版本
+        echo "commitHash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT  # 获取版本号并输出
 
+    # 第二步：对比本次版本号与缓存中的版本号
     - name: Compare Commit Hash
       id: cacheHash
-      uses: actions/cache@v3
+      uses: actions/cache@v3  # 使用GitHub缓存功能
       with:
-        path: .commitHash
-        key: commitHash_${{ steps.getHash.outputs.commitHash }}
+        path: .commitHash    # 缓存文件路径
+        key: commitHash_${{ steps.getHash.outputs.commitHash }}  # 以版本号作为缓存key
 
+    # 第三步：如果版本号不相同（源码有更新），保存新版本号到缓存
     - name: Save New Commit Hash
-      if: steps.cacheHash.outputs.cache-hit != 'true'
+      if: steps.cacheHash.outputs.cache-hit != 'true'  # 如果没有命中缓存=有更新
       run: |
-        echo ${{ steps.getHash.outputs.commitHash }} | tee .commitHash
+        echo ${{ steps.getHash.outputs.commitHash }} | tee .commitHash  # 保存新版本号
 
+    # 第四步：源码有更新时，自动触发编译固件
     - name: Trigger build
-      if: steps.cacheHash.outputs.cache-hit != 'true'
+      if: steps.cacheHash.outputs.cache-hit != 'true'  # 源码更新才执行
       uses: peter-evans/repository-dispatch@v2
       with:
         token: ${{ github.token }}
-        event-type: Source Code Update
+        event-type: Source Code Update  # 触发事件：源码已更新（通知编译脚本开始工作）
 
+    # 第五步：自动清理旧的运行记录，保持仓库整洁
     - name: Delete workflow runs
       uses: Mattraks/delete-workflow-runs@v2
       with:
-        retain_days: 0
-        keep_minimum_runs: 2
+        retain_days: 0          # 不保留超过0天的记录
+        keep_minimum_runs: 2    # 最少保留最近2条运行记录
