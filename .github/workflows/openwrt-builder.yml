@@ -229,13 +229,11 @@ jobs:
 
     # 自动删除老旧Releases版本
     - name: Remove old Releases
-      # uses: dev-drprasad/delete-older-releases@master
-      uses: actions/delete-package-versions@main
+      uses: dev-drprasad/delete-older-releases@master
       # 开启版本发布且未取消任务才执行
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       with:
-        # keep_latest: 3                      # 只保留最新3个版本
-        # delete_tags: true
-        min-versions-to-keep: 3           # 只保留最新3个版本
+        keep_latest: 3                      # 只保留最新3个版本
+        delete_tags: true                   # 自动删除旧版本对应的标签
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 仓库授权令牌
