@@ -16,12 +16,29 @@ on:
   repository_dispatch:  # 支持仓库API远程触发
   workflow_dispatch:    # 支持手动在GitHub页面点击运行
 
+jobs:
+  generate-config-list:
+    runs-on: ubuntu-latest
+    outputs:
+      config-list: ${{ steps.scan.outputs.config-list }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: 扫描 configs 文件夹中的配置文件
+        id: scan
+        run: |
+          mkdir -p configs
+          configs=$(ls configs/*.config 2>/dev/null | xargs -r basename | jq -R . | jq -cs .)
+          echo "config-list=$configs" >> $GITHUB_OUTPUT
+
+
 # 全局环境变量配置
 env:
   REPO_URL: https://github.com/coolsnowwolf/lede  # OpenWrt源码仓库地址(Leanlede)
   REPO_BRANCH: 20251001                           # 源码分支
   FEEDS_CONF: feeds.conf.default                  # 插件源配置文件名
-  CONFIG_FILE: .config                            # 固件内核与插件配置文件
+  # CONFIG_FILE: .config                            # 固件内核与插件配置文件
   DIY_P1_SH: diy-part1.sh                         # 自定义前置脚本1
   DIY_P2_SH: diy-part2.sh                         # 自定义后置脚本2
   UPLOAD_BIN_DIR: false                           # 是否上传完整编译bin目录
@@ -115,7 +132,8 @@ jobs:
         # 复制自定义files文件到源码目录
         [ -e files ] && mv files openwrt/files
         # 复制自定义固件配置.config到源码目录
-        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
+        cp configs/${{ github.event.inputs.config_name }} openwrt/.config
+        #[ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
         # 添加第二阶段脚本执行权限
         chmod +x $DIY_P2_SH
         # 进入openwrt目录
