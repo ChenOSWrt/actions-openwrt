@@ -1,11 +1,11 @@
 #
-# File: .github/workflows/openwrt-bulder.yml
-# Description: Build OpenWrt using GitHub Actions
+# 文件路径：.github/workflows/openwrt-bulder.yml
+# 文件说明：手动编译固件
 #
-# Copyright (c) 2019-2024 P3TERX <https://p3terx.com>
+# Copyright (c) 2026 ChenOSWrt
 #
-# This is free software, licensed under the MIT License.
-# See /LICENSE for more information.
+# 本项目为免费开源软件，遵循 MIT 开源许可证协议。
+# 详细许可条款请参阅仓库内 LICENSE 文件。
 #
 
 # 定义当前GitHub Actions工作流名称
