@@ -1,6 +1,6 @@
 #
 # 文件路径：.github/workflows/openwrt-bulder.yml
-# 文件说明：手动编译固件
+# 文件说明：手动编译固件（自动扫描 configs/ 下拉选择）
 #
 # Copyright (c) 2026 ChenOSWrt
 #
@@ -10,30 +10,64 @@
 
 name: ChenOSWrt_text
 
-# 保留你原来的两个触发方式
 on:
   repository_dispatch:
   workflow_dispatch:
+    inputs:
+      config_name:
+        description: 请选择配置文件
+        required: true
+        type: choice
+        options:
+          - 占位符（运行时自动刷新）
 
-# 自动扫描 configs 文件夹
 jobs:
-  generate-config-list:
+  # 第一步：扫描 configs/ 并更新 workflow 本身，把真实文件名写死到下拉
+  update-workflow:
     runs-on: ubuntu-latest
-    outputs:
-      config-list: ${{ steps.scan.outputs.config-list }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 扫描 configs 文件夹中的配置文件
+      - name: 扫描 configs/ 下的 .config
         id: scan
         run: |
           mkdir -p configs
-          configs=$(ls configs/*.config 2>/dev/null | xargs -r basename | jq -R . | jq -cs .)
-          echo "config-list=$configs" >> $GITHUB_OUTPUT
+          # 取出所有 configs/*.config 的文件名（不含路径）
+          list=$(ls configs/*.config 2>/dev/null | xargs -r basename)
+          if [ -z "$list" ]; then
+            echo "configs=[]" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          # 转成 yaml 数组
+          yaml_list=$(echo "$list" | sed 's/^/          - /')
+          echo "yaml_list<<EOF" >> $GITHUB_OUTPUT
+          echo "$yaml_list" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
+      - name: 自动更新 workflow 的 options
+        if: steps.scan.outputs.yaml_list != ''
+        run: |
+          ymlpath=.github/workflows/openwrt-bulder.yml
+          # 替换 options: 下面的列表为真实扫描到的文件
+          sed -i '/options:/,/^[[:space:]]*[^- ]/{/options:/!{/^[[:space:]]*[^- ]/!d}}' $ymlpath
+          sed -i "/options:/a\\${{ steps.scan.outputs.yaml_list }}" $ymlpath
+          cat $ymlpath
+
+      - name: 提交并推送回仓库
+        if: steps.scan.outputs.yaml_list != ''
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/openwrt-bulder.yml
+          git commit -m "auto update config list from configs/"
+          git push
+
+  # 第二步：正常编译（依赖上面更新完成后再执行）
   build:
-    needs: generate-config-list
+    needs: update-workflow
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -122,7 +156,7 @@ jobs:
           echo "status=success" >> $GITHUB_OUTPUT
           grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
           [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
-          echo "FILE_DATE=_$(date +%Y%m%d%H%M")" >> $GITHUB_ENV
+          echo "FILE_DATE=_$(date +%Y%m%d%H%M)" >> $GITHUB_ENV
 
       - name: Check space usage
         if: (!cancelled())
@@ -157,11 +191,10 @@ jobs:
         run: |
           echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
           touch release.txt
-          [ ${UPLOAD_GOFILE} = true && ${{ steps.gofile.outputs.url }} ] && echo "🔗 [GoFile](${{ steps.gofile.outputs.url }})" >> release.txt
           echo "status=success" >> $GITHUB_OUTPUT
 
       - name: Upload firmware to release
-        uses: softprops/softprops-release@v3
+        uses: softprops/action-gh-release@v3
         if: steps.tag.outputs.status == 'success' && !cancelled()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
