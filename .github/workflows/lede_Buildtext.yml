@@ -121,13 +121,15 @@ jobs:
     # 加载自定义配置、文件并执行第二阶段自定义脚本
     - name: Load custom configuration
       run: |
+        # 如果选择的是“请选择配置文件”，直接退出，不编译
+        if [[ "${{ github.event.inputs.device }}" == "请选择配置文件" ]]; then
+          echo "错误：未选择设备配置文件，编译终止"
+          exit 1
+        fi
         # 复制自定义files文件到源码目录
         [ -e files ] && mv files openwrt/files
-        # 复制自定义固件配置.config到源码目录
-        if [[ "${{ github.event.inputs.device }}" != "请选择配置文件" ]]; then
-          cp configs/${{ github.event.inputs.device }}.config openwrt/.config
-        fi
-        # [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
+        # 复制选中的设备配置
+        cp configs/${{ github.event.inputs.device }}.config openwrt/.config
         # 添加第二阶段脚本执行权限
         chmod +x $DIY_P2_SH
         # 进入openwrt目录
