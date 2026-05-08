@@ -55,6 +55,13 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
+    - name: 检查是否选择了有效配置
+      run: |
+        if [[ "${{ github.event.inputs.device }}" == "请选择配置文件" ]]; then
+          echo "错误：未选择设备配置文件，编译终止"
+          exit 1
+        fi
+
     # 初始化编译环境、安装依赖、清理冗余
     - name: Initialization environment
       env:
@@ -121,11 +128,6 @@ jobs:
     # 加载自定义配置、文件并执行第二阶段自定义脚本
     - name: Load custom configuration
       run: |
-        # 如果选择的是“请选择配置文件”，直接退出，不编译
-        if [[ "${{ github.event.inputs.device }}" == "请选择配置文件" ]]; then
-          echo "错误：未选择设备配置文件，编译终止"
-          exit 1
-        fi
         # 复制自定义files文件到源码目录
         [ -e files ] && mv files openwrt/files
         # 复制选中的设备配置
