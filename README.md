@@ -6,17 +6,17 @@
 ## 使用方法
 
 - 右上角点击 Use this template 然后选择 Create a new repository;
-- 在 Repository name 栏目中自定义填写你的仓库名(其他不用改)，然后点 Create repository;
+- 在 Repository name 栏目中填写你的自定义仓库名(其他不用改)，然后点 Create repository;
 - 在 .github/workflows/*-builder.yml 中可改源码仓库地址和源码分支;
 - 借助 Lean 或 immortalwrt 源码生成 .config 配置文件;
 - 在 Actions 页面选择 Build OpenWrt 编译任务;
 - 点击 Run workflow 按钮;
 - 编译完成后，点击 Actions 页面底部下载完整的固件镜像
 
-## Tips
+## 温馨提示
 
-- It may take a long time to create a `.config` file and build the OpenWrt firmware. Thus, before create repository to build your own firmware, you may check out if others have already built it which meet your needs by simply [search `Actions-Openwrt` in GitHub](https://github.com/search?q=Actions-openwrt).
-- Add some meta info of your built firmware (such as firmware architecture and installed packages) to your repository introduction, this will save others' time.
+- 生成配置文件及编译 OpenWrt 固件耗时通常较长。因此，在新建仓库自行编译固件前，可先在 GitHub 搜索 Actions-Openwrt，查看是否已有他人编译好、符合你需求的固件版本。
+- 请在仓库简介中补充固件相关信息（如固件架构、预装软件包等），方便他人查阅，节省他人时间。
 
 ## 致谢 / 项目引用
 
