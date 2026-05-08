@@ -21,9 +21,9 @@ on:
         type: choice
         options:
           - 请选择配置文件（否则会报错退出）
-          - a
-          - b
-          - c
+          - x86_64
+          - nanopc_t6
+          - zyxel_ngb7815
 
 # 全局环境变量配置
 env:
