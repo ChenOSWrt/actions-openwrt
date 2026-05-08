@@ -3,14 +3,15 @@
 
 基于 GitHub Actions 自动编译 OpenWrt 的模板
 
-## Usage
+## 使用方法
 
-- Click the [Use this template](https://github.com/P3TERX/Actions-OpenWrt/generate) button to create a new repository.
-- Generate `.config` files using [Lean's OpenWrt](https://github.com/coolsnowwolf/lede) source code. ( You can change it through environment variables in the workflow file. )
-- Push `.config` file to the GitHub repository.
-- Select `Build OpenWrt` on the Actions page.
-- Click the `Run workflow` button.
-- When the build is complete, click the `Artifacts` button in the upper right corner of the Actions page to download the binaries.
+- 右上角点击 Use this template 然后选择 Create a new repository;
+- 在 Repository name 栏目中自定义填写你的仓库名(其他不用改)，然后点 Create repository ；
+- 
+- 借助 Lean 或 immortalwrt 源码生成 .config 配置文件;
+- 在 Actions 页面选择 Build OpenWrt 编译任务;
+- 点击 Run workflow 按钮;
+- 编译完成后，点击 Actions 页面底部下载完整的固件镜像
 
 ## Tips
 
