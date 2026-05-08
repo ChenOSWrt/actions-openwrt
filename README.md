@@ -32,5 +32,5 @@
 - [dev-drprasad/delete-older-releases](https://github.com/dev-drprasad/delete-older-releases)
 - [Mattraks/delete-workflow-runs](https://github.com/Mattraks/delete-workflow-runs)
 - [Mikubill/transfer](https://github.com/Mikubill/transfer)
-- [peter-evans/repository-dispatch](https://github.com/peter-evans/repository-dispatch)
-- [softprops/action-gh-release](https://github.com/softprops/action-gh-release)
+- [peter-evans/repository-dispatch](https://github.com/peter-evans/repository-dispatch)          - [softprops/action-gh-release](https://github.com/softprops/action-gh-release)
+
