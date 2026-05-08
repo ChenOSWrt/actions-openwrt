@@ -1,13 +1,11 @@
 #
-# https://github.com/P3TERX/Actions-OpenWrt
+# 文件路径：.github/workflows/update-checker.yml
+# 文件说明：固件自动更新
 #
-# File: .github/workflows/update-checker.yml
-# Description: Source code update checker
+# Copyright (c) 2026 ChenOSWrt
 #
-# Copyright (c) 2019-2024 P3TERX <https://p3terx.com>
-#
-# This is free software, licensed under the MIT License.
-# See /LICENSE for more information.
+# 本项目为免费开源软件，遵循 MIT 开源许可证协议。
+# 详细许可条款请参阅仓库内 LICENSE 文件。
 #
 
 # 工作流名称：源码更新检测
