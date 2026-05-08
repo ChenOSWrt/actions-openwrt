@@ -5,7 +5,7 @@
 
 ## 使用方法
 
-- 右上角点击 Use this template 然后选择 Create a new repository;
+- 右上角点击 Fork;
 - 在 Repository name 栏目中填写你的自定义仓库名(其他不用改)，然后点 Create repository;
 - 在 .github/workflows/*-builder.yml 中可改源码仓库地址和源码分支;
 - 借助 Lean 或 immortalwrt 源码生成 .config 配置文件;
