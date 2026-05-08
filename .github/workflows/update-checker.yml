@@ -1,6 +1,6 @@
 #
 # 文件路径：.github/workflows/update-checker.yml
-# 文件说明：源码更新后会自动编译最新版固件
+# 文件说明：LEDE_Update
 #
 # Copyright (c) 2026 ChenOSWrt
 #
