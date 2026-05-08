@@ -8,7 +8,7 @@
 # 详细许可条款请参阅仓库内 LICENSE 文件。
 #
 
-name: ChenOSWrt 手动编译固件
+name: ChenOSWrt_text
 
 # 保留你原来的两个触发方式
 on:
