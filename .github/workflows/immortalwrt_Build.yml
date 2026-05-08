@@ -1,5 +1,5 @@
 #
-# 文件路径：.github/workflows/LEDE_Build.yml
+# 文件路径：.github/workflows/immortalwrt_Build.yml
 # 文件说明：手动编译固件
 #
 # Copyright (c) 2026 ChenOSWrt
@@ -18,16 +18,16 @@ on:
 
 # 全局环境变量配置
 env:
-  REPO_URL: https://github.com/coolsnowwolf/lede  # OpenWrt源码仓库地址(Leanlede)
-  REPO_BRANCH: 20251001                           # 源码分支
-  FEEDS_CONF: feeds.conf.default                  # 插件源配置文件名
-  CONFIG_FILE: .config                            # 固件内核与插件配置文件
-  DIY_P1_SH: diy-part1.sh                         # 自定义前置脚本1
-  DIY_P2_SH: diy-part2.sh                         # 自定义后置脚本2
-  UPLOAD_BIN_DIR: false                           # 是否上传完整编译bin目录
-  UPLOAD_FIRMWARE: true                           # 是否上传编译好的固件
-  UPLOAD_RELEASE: true                            # 是否发布到Releases版本
-  TZ: Asia/Shanghai                               # 设置时区为上海
+  REPO_URL: https://github.com/immortalwrt/immortalwrt  # OpenWrt源码仓库地址(Leanlede)
+  REPO_BRANCH: openwrt-24.10                            # 源码分支
+  FEEDS_CONF: feeds.conf.default                        # 插件源配置文件名
+  CONFIG_FILE: .config                                  # 固件内核与插件配置文件
+  DIY_P1_SH: diy-part1.sh                               # 自定义前置脚本1
+  DIY_P2_SH: diy-part2.sh                               # 自定义后置脚本2
+  UPLOAD_BIN_DIR: false                                 # 是否上传完整编译bin目录
+  UPLOAD_FIRMWARE: true                                 # 是否上传编译好的固件
+  UPLOAD_RELEASE: true                                  # 是否发布到Releases版本
+  TZ: Asia/Shanghai                                     # 设置时区为上海
 
 # 加上写入权限
 permissions:
