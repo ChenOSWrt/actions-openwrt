@@ -9,7 +9,7 @@
 #
 
 # 定义当前GitHub Actions工作流名称
-name: lede固件编译text
+name: lede固件编译
 
 # 定义工作流触发条件
 on:
@@ -218,90 +218,37 @@ jobs:
         echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
         # 创建发布说明文件
         touch release.txt
+        # 可选：添加外链下载地址（预留）
+        [ ${UPLOAD_GOFILE} = true && ${{ steps.gofile.outputs.url }} ] && echo "🔗 [GoFile](${{ steps.gofile.outputs.url }})" >> release.txt
         # 标记标签生成成功
         echo "status=success" >> $GITHUB_OUTPUT
 
-    # ===================== 以下是我帮你官方安全重写的部分 =====================
-    # 将固件发布到GitHub Releases（只上传img.gz + sha256sums）
+    # 将固件发布到GitHub Releases
     - name: Upload firmware to release
-      uses: actions/github-script@v9
+      uses: softprops/action-gh-release@v3
+      # 标签生成成功且未取消任务才执行
       if: steps.tag.outputs.status == 'success' && !cancelled()
       env:
-        FIRMWARE_DIR: ${{ env.FIRMWARE }}
-        RELEASE_TAG: ${{ steps.tag.outputs.release_tag }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 仓库授权令牌
       with:
-        retries: 3
-        script: |
-          const fs = require('fs');
-          const path = require('path');
-          const dir = process.env.FIRMWARE_DIR;
-          const tagName = process.env.RELEASE_TAG;
-          const files = fs.readdirSync(dir);
-          const allowed = ['.img.gz', 'sha256sums'];
-          const uploadFiles = files.filter(file => allowed.some(ext => file.endsWith(ext)));
-          const body = fs.readFileSync('release.txt', 'utf8');
-
-          const release = await github.rest.repos.createRelease({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            tag_name: tagName,
-            body: body
-          });
-
-          for (const file of uploadFiles) {
-            const filePath = path.join(dir, file);
-            await github.rest.repos.uploadReleaseAsset({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: release.data.id,
-              name: file,
-              data: fs.readFileSync(filePath)
-            });
-          }
-
-    # 官方清理旧运行记录
+        tag_name: ${{ steps.tag.outputs.release_tag }}
+        body_path: release.txt
+        files: ${{ env.FIRMWARE }}/*
+      
+    # 自动清理旧的Workflow运行记录
     - name: Delete workflow runs
-      uses: actions/github-script@v9
+      uses: Mattraks/delete-workflow-runs@v2.1
       with:
-        retries: 3
-        script: |
-          const { data: runs } = await github.rest.actions.listWorkflowRunsForRepo({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            per_page: 100
-          });
-          const sorted = runs.workflow_runs.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
-          for (let i=2; i<sorted.length; i++) {
-            await github.rest.actions.deleteWorkflowRun({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: sorted[i].id
-            });
-          }
+        retain_days: 0          # 不保留历史天数
+        keep_minimum_runs: 2    # 最少保留2条运行记录
 
-    # 官方清理旧Releases
+    # 自动删除老旧Releases版本
     - name: Remove old Releases
-      uses: actions/github-script@v9
+      uses: dev-drprasad/delete-older-releases@master
+      # 开启版本发布且未取消任务才执行
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       with:
-        retries: 3
-        script: |
-          const { data: releases } = await github.rest.repos.listReleases({
-            owner: context.repo.owner,
-            repo: context.repo.repo
-          });
-          const valid = releases.filter(r => !r.draft && !r.prerelease);
-          for (let i=3; i<valid.length; i++) {
-            await github.rest.repos.deleteRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: valid[i].id
-            }).catch(()=>{});
-            try {
-              await github.rest.git.deleteRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref: `tags/${valid[i].tag_name}`
-              });
-            } catch {}
-          }
+        keep_latest: 3                      # 只保留最新3个版本
+        delete_tags: true                   # 自动删除旧版本对应的标签
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 仓库授权令牌
