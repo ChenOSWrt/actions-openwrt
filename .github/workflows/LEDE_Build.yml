@@ -1,6 +1,6 @@
 #
-# 文件路径：.github/workflows/openwrt-bulder.yml
-# 文件说明：LEDE_Build
+# 文件路径：.github/workflows/LEDE_Build.yml
+# 文件说明：手动编译固件
 #
 # Copyright (c) 2026 ChenOSWrt
 #
@@ -9,7 +9,7 @@
 #
 
 # 定义当前GitHub Actions工作流名称
-name: ChenOSWrt 手动编译固件
+name: LEDE_Build
 
 # 定义工作流触发条件
 on:
