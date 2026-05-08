@@ -1,6 +1,6 @@
 #
 # 文件路径：.github/workflows/update-checker.yml
-# 文件说明：源码改变，固件会自动编译最新版
+# 文件说明：源码更新后会自动编译最新版固件
 #
 # Copyright (c) 2026 ChenOSWrt
 #
