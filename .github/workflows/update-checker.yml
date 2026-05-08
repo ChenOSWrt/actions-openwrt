@@ -20,9 +20,9 @@ env:
 
 # 触发方式
 on:
-  workflow_dispatch:  # 允许手动点击运行
-#  schedule:           # 定时自动检测（目前被注释，未开启）
-#    - cron: 0 */18 * * *  # 每18小时检查一次（取消注释即可启用）
+  workflow_dispatch:         # 允许手动点击运行
+#  schedule:                 # 定时自动检测（目前被注释，未开启）
+#    - cron: 0 */18 * * *    # 每18小时检查一次（取消注释即可启用）
 
 # 加上写入权限
 permissions:
@@ -47,7 +47,7 @@ jobs:
     # 第二步：对比本次版本号与缓存中的版本号
     - name: Compare Commit Hash
       id: cacheHash
-      uses: actions/cache@v4  # 使用GitHub缓存功能
+      uses: actions/cache@v5  # 使用GitHub缓存功能
       with:
         path: .commitHash    # 缓存文件路径
         key: commitHash_${{ steps.getHash.outputs.commitHash }}  # 以版本号作为缓存key
@@ -61,14 +61,14 @@ jobs:
     # 第四步：源码有更新时，自动触发编译固件
     - name: Trigger build
       if: steps.cacheHash.outputs.cache-hit != 'true'  # 源码更新才执行
-      uses: peter-evans/repository-dispatch@v3
+      uses: peter-evans/repository-dispatch@v4
       with:
         token: ${{ github.token }}
         event-type: Source Code Update  # 触发事件：源码已更新（通知编译脚本开始工作）
 
     # 第五步：自动清理旧的运行记录，保持仓库整洁
     - name: Delete workflow runs
-      uses: Mattraks/delete-workflow-runs@v2
+      uses: Mattraks/delete-workflow-runs@v2.1
       with:
         retain_days: 0          # 不保留超过0天的记录
         keep_minimum_runs: 2    # 最少保留最近2条运行记录
