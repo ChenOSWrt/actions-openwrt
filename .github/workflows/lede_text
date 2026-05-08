@@ -9,7 +9,7 @@
 #
 
 # 定义当前GitHub Actions工作流名称
-name: lede固件编译
+name: lede固件编译text
 
 # 定义工作流触发条件
 on:
