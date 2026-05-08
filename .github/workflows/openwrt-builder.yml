@@ -230,7 +230,7 @@ jobs:
     # 自动删除老旧Releases版本
     - name: Remove old Releases
       # uses: dev-drprasad/delete-older-releases@master
-      uses: actions/delete-package-versions@vfix-node-version
+      uses: actions/delete-package-versions@main
       # 开启版本发布且未取消任务才执行
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       with:
