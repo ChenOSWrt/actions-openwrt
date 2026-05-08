@@ -20,7 +20,7 @@ on:
         required: true
         type: choice
         options:
-          - 请选择配置文件
+          - 请选择配置文件（否则会报错）
           - a
           - b
           - c
@@ -57,7 +57,7 @@ jobs:
 
     - name: 检查是否选择了有效配置
       run: |
-        if [[ "${{ github.event.inputs.device }}" == "请选择配置文件" ]]; then
+        if [[ "${{ github.event.inputs.device }}" == "请选择配置文件（否则会报错）" ]]; then
           echo "错误：未选择设备配置文件，编译终止"
           exit 1
         fi
