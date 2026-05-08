@@ -25,6 +25,7 @@
 - [GitHub Actions](https://github.com/features/actions)
 - [OpenWrt](https://github.com/openwrt/openwrt)
 - [coolsnowwolf/lede](https://github.com/coolsnowwolf/lede)
+- [immortalwrt/immortalwrt](https://github.com/immortalwrt/immortalwrt)
 - [actions/checkout](https://github.com/actions/checkout)
 - [actions/upload-artifact](https://github.com/actions/upload-artifact)
 - [actions/cache](https://github.com/actions/cache)
