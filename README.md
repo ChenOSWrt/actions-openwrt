@@ -6,8 +6,8 @@
 ## 使用方法
 
 - 右上角点击 Use this template 然后选择 Create a new repository;
-- 在 Repository name 栏目中自定义填写你的仓库名(其他不用改)，然后点 Create repository ；
-- 
+- 在 Repository name 栏目中自定义填写你的仓库名(其他不用改)，然后点 Create repository;
+- 在 .github/workflows/*-builder.yml 中可改源码仓库地址和源码分支;
 - 借助 Lean 或 immortalwrt 源码生成 .config 配置文件;
 - 在 Actions 页面选择 Build OpenWrt 编译任务;
 - 点击 Run workflow 按钮;
