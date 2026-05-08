@@ -20,7 +20,7 @@ on:
         required: true
         type: choice
         options:
-          - 请选择配置文件（否则会报错）
+          - 请选择配置文件（否则会报错退出）
           - a
           - b
           - c
@@ -54,9 +54,9 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: 检查是否选择了有效配置
+    - name: 检查是否选择了有效配置，否则报错退出
       run: |
-        if [[ "${{ github.event.inputs.device }}" == "请选择配置文件（否则会报错）" ]]; then
+        if [[ "${{ github.event.inputs.device }}" == "请选择配置文件（否则会报错退出）" ]]; then
           echo "错误：未选择设备配置文件，编译终止"
           exit 1
         fi
