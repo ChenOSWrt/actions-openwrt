@@ -36,9 +36,9 @@ jobs:
         run: |
           mkdir -p configs
           # 取出所有 configs/*.config 的文件名（不含路径）
-          list=$(ls configs/*.config 2>/dev/null | xargs -r basename)
+          list=$(ls configs/*.config 2>/dev/null | while read -r path; do basename "$path"; done)
           if [ -z "$list" ]; then
-            echo "configs=[]" >> $GITHUB_OUTPUT
+            echo "yaml_list=" >> $GITHUB_OUTPUT
             exit 0
           fi
           # 转成 yaml 数组
