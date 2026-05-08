@@ -1,6 +1,6 @@
 #
 # 文件路径：.github/workflows/LEDE_Update.yml
-# 文件说明：LEDE_Update
+# 文件说明：自动更新固件
 #
 # Copyright (c) 2026 ChenOSWrt
 #
@@ -9,7 +9,7 @@
 #
 
 # 工作流名称：源码更新检测
-name: ChenOSWrt 自动更新固件
+name: LEDE_Update
 
 # 全局环境变量
 env:
