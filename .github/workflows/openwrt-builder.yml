@@ -164,7 +164,7 @@ jobs:
 
     # 上传完整bin编译目录为制品
     - name: Upload bin directory
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       # 编译成功且开启上传bin目录才执行
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
       with:
@@ -188,7 +188,7 @@ jobs:
 
     # 上传纯净固件为GitHub Actions制品
     - name: Upload firmware directory
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       # 目录整理成功且未取消任务才执行
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
@@ -224,17 +224,20 @@ jobs:
       
     # 自动清理旧的Workflow运行记录
     - name: Delete workflow runs
-      uses: Mattraks/delete-workflow-runs@v2
+      uses: Mattraks/delete-workflow-runs@v2.1
       with:
         retain_days: 0          # 不保留历史天数
         keep_minimum_runs: 2    # 最少保留2条运行记录
 
     # 自动删除老旧Releases版本
     - name: Remove old Releases
-      uses: actions/delete-package-versions@v5
+      uses: dev-drprasad/delete-older-releases@master
+      # uses: actions/delete-package-versions@v5
       # 开启版本发布且未取消任务才执行
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       with:
-        min-versions-to-keep: 3           # 只保留最新3个版本
+        keep_latest: 3                      # 只保留最新3个版本
+        delete_tags: true
+        # min-versions-to-keep: 3           # 只保留最新3个版本
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 仓库授权令牌
