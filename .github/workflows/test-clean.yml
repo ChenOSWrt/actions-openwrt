@@ -1,0 +1,27 @@
+name: 测试清理功能（不编译固件）
+
+on:
+  workflow_dispatch:  # 手动点击运行
+
+jobs:
+  test-clean:
+    runs-on: ubuntu-latest
+    # 必须给权限，否则不能删记录、不能删Releases
+    permissions:
+      actions: write
+      contents: write
+      packages: write
+
+    steps:
+      - name: 清理旧Workflow记录（测试）
+        run: |
+          wid=$(gh workflow list --json name,id -q '.[] | select(.name == "lede固件编译") | .id')
+          gh run list --workflow $wid --limit 100 --json databaseId -q ".[2:].databaseId" | xargs -r gh run delete
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 清理旧Releases（测试）
+        run: |
+          gh release list --limit 100 | tail -n +3 | awk '{print $1}' | xargs -I {} gh release delete {} --yes --cleanup-tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
