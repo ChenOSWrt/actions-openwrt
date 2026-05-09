@@ -52,9 +52,9 @@ jobs:
 
     - name: 写入缓存测试标记（用来验证是否命中）
       run: |
-        echo "RunID: $GITHUB_RUN_ID 设备: ${{ matrix.device }}" > $CCACHE_DIR/cache_test.txt
-        ls -lh $CCACHE_DIR
-        cat $CCACHE_DIR/cache_test.txt
+        echo "RunID: $GITHUB_RUN_ID 设备: ${{ matrix.device }}" > $HOME/.ccache/cache_test.txt
+        ls -lh $HOME/.ccache
+        cat $HOME/.ccache/cache_test.txt
 
     - name: 缓存加速编译（第一次编译成功后生效）
       if: env.USE_CCACHE == 'true'
