@@ -235,9 +235,14 @@ jobs:
       if: always()
       run: |
         # 获取需要删除的100条工作流记录（保留最新2个）
-        gh run list --workflow "${{ github.workflow }}" --limit 100 \
+        gh run list --workflow "${{ github.workflow }}" --limit all \
           --json databaseId -q '.[2:][] | .databaseId' \
-          | xargs -n 1 gh run delete
+          | while read -r id; do
+            if [ -n "$id" ]; then
+              echo "正在删除运行记录：$id"
+              gh run delete "$id" || echo "删除失败：$id"
+            fi
+          done
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
