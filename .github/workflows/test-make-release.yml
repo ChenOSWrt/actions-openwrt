@@ -1,4 +1,4 @@
-name: 新建测试Release
+name: 测试Release
 on: workflow_dispatch
 
 jobs:
@@ -7,12 +7,30 @@ jobs:
     permissions:
       contents: write  # 必须给创建Release的权限
     steps:
-      # 必须加上这一步！拉取仓库代码，让gh命令知道操作的是哪个仓库
       - name: 拉取仓库代码
         uses: actions/checkout@v6
+        with:
+          fetch-tags: true  # 必须加，才能读取历史标签
+          fetch-depth: 0    # 必须加，才能获取所有tag
 
-      - name: 创建空测试版本
+      # 👇 这一段就是你原来【生成版本号】的代码
+      - name: 生成Releases版本标签和说明文件
+        id: tag
+        run: |
+          # 以日期时间作为版本标签
+          YM=$(date +%Y%m)
+          NUM=$(($(git tag|grep ^$YM-V|sort -V|tail -1|sed 's/[^0-9]//g')+1))
+          echo "release_tag=$YM-V${NUM:-1}" >> $GITHUB_OUTPUT
+          # 创建发布说明文件
+          touch release.txt
+          # 标记标签生成成功
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      # 👇 这一段是【创建Release】的代码（自动用上面生成的版本号）
+      - name: 创建正式测试版本
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create test-v$(date +%s) --title "测试版本" --notes "这是测试用的"
+          gh release create ${{ steps.tag.outputs.release_tag }} \
+            --title "测试版本 ${{ steps.tag.outputs.release_tag }}" \
+            --notes "这是自动生成的测试版本"
