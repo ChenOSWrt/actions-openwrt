@@ -217,6 +217,7 @@ jobs:
         gh run list --workflow "${{ github.workflow }}" --limit 100 \
           --json databaseId -q '.[2:][] | .databaseId' \
           | xargs -n 1 gh run delete
+      env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: 自动删除老旧Releases和Tags版本
@@ -232,4 +233,4 @@ jobs:
           git push origin --delete "$tag"
         done
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 仓库授权令牌
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
