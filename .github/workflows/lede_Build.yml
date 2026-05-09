@@ -234,7 +234,7 @@ jobs:
     - name: 自动清理旧的Workflow运行记录
       if: always()
       run: |
-        # 获取需要删除的100条工作流记录（保留最新2个）
+        # 获取需要删除的工作流记录（保留最新2个）
         gh run list --workflow "${{ github.workflow }}" --limit all \
           --json databaseId -q '.[2:][] | .databaseId' \
           | while read -r id; do
