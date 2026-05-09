@@ -1,0 +1,12 @@
+name: 新建测试Release
+on: workflow_dispatch
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 创建空测试版本
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create test-v$(date +%s) --title "测试版本" --notes "这是测试用的"
