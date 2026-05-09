@@ -1,4 +1,4 @@
-name: 最终清理测试（无报错版）
+name: 清理测试（工作流+Releases）
 on: workflow_dispatch
 
 jobs:
@@ -9,19 +9,17 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-      # 清理工作流记录（保留最新2条）
-      - name: 删除旧工作流记录
+      - name: 清理旧工作流记录
         run: |
-          wid=$(gh workflow list --json name,id -q '.[] | select(.name == "新建测试Release") | .id')
+          wid=$(gh workflow list --json name,id -q '.[] | select(.name == "lede固件编译") | .id')
           gh run list --workflow $wid --limit 100 --json databaseId -q '.[2:][] | .databaseId' | xargs -n 1 gh run delete
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 清理旧 Releases（保留最新2个）
-      - name: 删除旧Releases
+      - name: 清理旧Releases
         run: |
-          gh release list --limit 100 | tail -n +3 | awk '{print $1}' | xargs -I {} gh release delete {} --yes || true
+          gh release list --json tagName --jq '.[2:][] | .tagName' | xargs -r -n 1 gh release delete --yes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
