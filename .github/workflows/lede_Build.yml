@@ -20,7 +20,6 @@ on:
 env:
   REPO_URL: https://github.com/coolsnowwolf/lede  # OpenWrt源码仓库地址(Leanlede)
   REPO_BRANCH: 20251001                           # 源码分支
-  FEEDS_CONF: feeds.conf.default                  # 插件源配置文件名
   CONFIG_FILE: .config                            # 固件内核与插件配置文件
   DIY_P1_SH: diy-part1.sh                         # 自定义前置脚本1
   DIY_P2_SH: diy-part2.sh                         # 自定义后置脚本2
