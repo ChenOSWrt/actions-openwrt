@@ -11,19 +11,18 @@ jobs:
       contents: write
 
     steps:
-      # 必须加上这一步！拉取仓库代码，让gh命令知道操作的是哪个仓库
       - name: 拉取仓库代码
         uses: actions/checkout@v4
 
       - name: 清理旧Workflow记录（测试）
         run: |
           wid=$(gh workflow list --json name,id -q '.[] | select(.name == "lede固件编译") | .id')
-          gh run list --workflow $wid --limit 100 --json databaseId -q ".[2:].databaseId" | xargs -r gh run delete
+          gh run list --workflow $wid --limit 100 --json databaseId --jq ".[2:][] | .databaseId" | xargs -r gh run delete
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 清理旧Releases（测试）
         run: |
-          gh release list --limit 100 | tail -n +3 | awk '{print $1}' | xargs -I {} gh release delete {} --yes --cleanup-tag
+          gh release list --limit 100 | tail -n +3 | awk '{print $1}' | xargs -I {} gh release delete {} --yes || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
