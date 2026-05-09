@@ -213,11 +213,7 @@ jobs:
       # 开启版本发布且未取消任务才执行
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       run: |
-        # 以日期时间作为版本标签
-        # echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
-        YM=$(date +%Y%m)
-        NUM=$(($(git tag|grep ^$YM-V|sort -V|tail -1|sed 's/[^0-9]9//g')+1))
-        echo "release_tag=$YM-V${NUM:-1}" >> $GITHUB_OUTPUT
+        echo "release_tag=v1.0.${{ github.run_number }}" >> $GITHUB_OUTPUT
         # 标记标签生成成功
         echo "status=success" >> $GITHUB_OUTPUT
  
