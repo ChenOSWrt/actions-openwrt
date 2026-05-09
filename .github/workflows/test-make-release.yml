@@ -17,9 +17,14 @@ jobs:
       - name: 生成Releases版本标签和说明文件
         id: tag
         run: |
-          # 以日期时间作为版本标签
           YM=$(date +%Y%m)
-          NUM=$(($(git tag|grep ^$YM-V|sort -V|tail -1|sed 's/[^0-9]//g')+1))
+          LAST_TAG=$(git tag | grep "^$YM-V" | sort -V | tail -1)
+          if [ -z "$LAST_TAG" ]; then
+            NUM=1
+          else
+            NUM=$(echo "$LAST_TAG" | awk -F 'V' '{print $2}')
+            NUM=$((NUM + 1))
+          fi
           echo "release_tag=$YM-V${NUM:-1}" >> $GITHUB_OUTPUT
           # 创建发布说明文件
           touch release.txt
