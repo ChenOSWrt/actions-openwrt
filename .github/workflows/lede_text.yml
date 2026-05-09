@@ -94,9 +94,6 @@ jobs:
         # 赋予工作目录权限
         sudo chown $USER:$GROUPS /workdir
 
-    - name: 准备缓存目录
-      run: mkdir -p $HOME/.ccache
-
     - name: 缓存加速编译（第一次编译成功后生效）
       if: env.USE_CCACHE == 'true'
       uses: actions/cache@v5
