@@ -1,0 +1,30 @@
+name: 测试缓存功能
+on:
+  workflow_dispatch:
+
+jobs:
+  test-cache:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v6
+
+      # 👇 必须先创建目录，否则缓存插件会报路径错误
+      - name: 创建缓存目录
+        run: mkdir -p $HOME/.ccache
+
+      # 👇 核心：测试缓存的保存和读取
+      - name: 测试缓存加速
+        uses: actions/cache@v5
+        with:
+          path: $HOME/.ccache
+          key: test-cache-${{ github.sha }}
+          restore-keys: |
+            test-cache-
+
+      # 👇 往缓存里写入一个测试文件，让缓存真正生效
+      - name: 写入测试文件到缓存
+        run: |
+          echo "缓存测试成功！" > $HOME/.ccache/test.txt
+          echo "✅ 缓存目录已生成测试文件"
+          ls -lh $HOME/.ccache
