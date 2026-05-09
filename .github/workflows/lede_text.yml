@@ -9,7 +9,7 @@
 #
 
 # 当前GitHub Actions工作流名称
-name: lede_text
+name: lede_Build
 
 # 工作流触发条件
 on:
@@ -40,8 +40,6 @@ env:
   CCACHE_DIR: ~/.ccache
   # 设置时区为上海
   TZ: Asia/Shanghai
-  # 跳过编译
-  SKIP_COMPILE: true
 
 # 工作流写入权限
 permissions:
@@ -56,7 +54,7 @@ jobs:
       fail-fast: false
       matrix:
         # 这里写设备名，自动匹配 configs/设备名.config
-        device: [X86_64]
+        device: [nanopc_t6]
 
     steps:
     - name: 检出仓库代码到运行环境
@@ -94,14 +92,23 @@ jobs:
         # 赋予工作目录权限
         sudo chown $USER:$GROUPS /workdir
 
+    - name: 创建缓存目录和写入文件（确保目录存在且非空）
+      run: |
+        mkdir -p ${{ env.CCACHE_DIR }}
+        touch ${{ env.CCACHE_DIR }}/.keep
+
     - name: 缓存加速编译（第一次编译成功后生效）
       if: env.USE_CCACHE == 'true'
+      id: ccache
       uses: actions/cache@v5
       with:
         path: ${{ env.CCACHE_DIR }}
         key: ${{ runner.os }}-ccache-${{ matrix.device }}-${{ github.sha }}
         restore-keys: |
           ${{ runner.os }}-ccache-${{ matrix.device }}-
+
+    - name: 查看缓存状态
+      run: echo "缓存命中：${{ steps.ccache.outputs.cache-hit }}"
 
     - name: 克隆OpenWrt源码到工作目录
       # 指定执行目录
@@ -142,6 +149,11 @@ jobs:
         # 执行第二阶段DIY脚本
         $GITHUB_WORKSPACE/$DIY_P2_SH
 
+    - name: 开启 ccache 缓存
+      run: |
+        cd openwrt
+        echo "CONFIG_CCACHE=y" >> .config
+
     - name: 下载编译所需源码包，清理无效小文件
       id: package
       run: |
@@ -158,17 +170,11 @@ jobs:
     - name: 正式编译OpenWrt固件
       id: compile
       run: |
-        if [ "${{ env.SKIP_COMPILE }}" = "true" ]; then
-          echo "✅ 已开启跳过编译，模拟编译成功"
-          mkdir -p openwrt/bin/targets/x86/64  # 模拟空目录
-          # 伪造2个测试文件，让后续整理+发布能跑通
-          touch openwrt/bin/targets/x86/64/test.img.gz
-          touch openwrt/bin/targets/x86/64/sha256sums
-        else
-          cd openwrt
-          echo -e "$(nproc) thread compile"
-          make -j$(nproc) || make -j1 || make -j1 V=s
-        fi
+        cd openwrt
+        # 输出编译线程数
+        echo -e "$(nproc) thread compile"
+        # 多线程编译，失败降级单线程重试，最后带日志排查
+        make -j$(nproc) || make -j1 || make -j1 V=s
         # 标记编译成功状态
         echo "status=success" >> $GITHUB_OUTPUT
         # 提取当前编译的设备型号
@@ -197,16 +203,15 @@ jobs:
       # 开启固件上传且未取消任务才执行
       if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
-        # 进入固件输出目录（适配真实编译和测试模式）
-        if [ -d "openwrt/bin/targets" ]; then
-          cd openwrt/bin/targets/*/* || true
-        fi
-        find . -type f ! -name '*.img' ! -name '*.img.gz' ! -name 'sha256sums' -delete 2>/dev/null || true
+        # 进入固件输出目录
+        cd openwrt/bin/targets/*/*
+        # 保留.img、.img.gz、sha256sums文件
+        find . -type f ! -name '*.img' ! -name '*.img.gz' ! -name 'sha256sums' -delete
         # 删除多余软件包文件夹
-        rm -rf packages 2>/dev/null || true
+        rm -rf packages
         # 显示最终剩下的文件（你可以在日志里看到）
         echo "最终保留的文件："
-        ls -lh 2>/dev/null || echo "目录为空（测试模式）"
+        ls -lh
         # 固件路径写入环境变量
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         # 标记整理完成
@@ -235,29 +240,13 @@ jobs:
     - name: 将固件发布到GitHub Releases
       if: steps.tag.outputs.status == 'success' && !cancelled()
       run: |
-        TAG=${{ steps.tag.outputs.release_tag }}
-        echo "正在处理Release: $TAG"
-    
-        # 1. 先删除旧的Release，避免重复创建报错
-        gh release delete "$TAG" -y 2>/dev/null || true
-    
-        # 2. 准备上传文件（适配真实编译和测试模式）
-        UPLOAD_FILES=""
-        if [ -n "$FIRMWARE" ] && [ -d "$FIRMWARE" ] && [ "$(ls -A "$FIRMWARE")" ]; then
-          # 真实编译：上传固件目录里的所有文件
-          UPLOAD_FILES="$FIRMWARE/*"
-        else
-          # 测试模式：创建一个空文件，保证Release创建成功
-          touch test_release.txt
-          echo "测试文件，编译模式会自动替换" > test_release.txt
-          UPLOAD_FILES="test_release.txt"
-        fi
-    
-        # 3. 创建Release
-        gh release create "$TAG" \
-          --title "$TAG" \
+        # TAG=${{ steps.tag.outputs.release_tag }}
+        # DEVICE=${{ matrix.device }}
+      
+        gh release create ${{ steps.tag.outputs.release_tag }} \
+          --title "${{ steps.tag.outputs.release_tag }}" \
           --notes-file ${{ env.RELEASE_NOTES }} \
-          $UPLOAD_FILES
+          ${{ env.FIRMWARE }}/*
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
