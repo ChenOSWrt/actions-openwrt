@@ -191,8 +191,13 @@ jobs:
       run: |
         # 进入固件输出目录
         cd openwrt/bin/targets/*/*
+        # 保留.img、.img.gz、sha256sums文件
+        find . -type f ! -name '*.img' ! -name '*.img.gz' ! -name 'sha256sums' -delete
         # 删除多余软件包文件夹
         rm -rf packages
+        # 显示最终剩下的文件（你可以在日志里看到）
+        echo "最终保留的文件："
+        ls -lh
         # 固件路径写入环境变量
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         # 标记整理完成
@@ -213,6 +218,7 @@ jobs:
       # 开启版本发布且未取消任务才执行
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       run: |
+        # 版本号：v1.0.x
         echo "release_tag=v1.0.${{ github.run_number }}" >> $GITHUB_OUTPUT
         # 标记标签生成成功
         echo "status=success" >> $GITHUB_OUTPUT
