@@ -19,15 +19,7 @@ jobs:
       - name: 生成Releases版本标签和说明文件
         id: tag
         run: |
-          YM=$(date +%Y%m)
-          LAST_TAG=$(git tag | grep "^$YM-V" | sort -V | tail -1)
-          if [ -z "$LAST_TAG" ]; then
-            NUM=1
-          else
-            NUM=$(echo "$LAST_TAG" | awk -F 'V' '{print $2}')
-            NUM=$((NUM + 1))
-          fi
-          echo "release_tag=$YM-V$NUM" >> $GITHUB_OUTPUT
+          echo "release_tag=v1.0.${{ github.run_number }}" >> $GITHUB_OUTPUT
           # 标记标签生成成功
           echo "status=success" >> $GITHUB_OUTPUT
 
