@@ -18,16 +18,28 @@ on:
 
 # 全局环境变量配置
 env:
-  REPO_URL: https://github.com/coolsnowwolf/lede  # OpenWrt源码仓库地址
-  REPO_BRANCH: 20251001                           # 源码分支
-  CONFIG_FILE: .config                            # 固件内核与插件配置文件
-  RELEASE_NOTES: release.txt                      # 更新日志
-  DIY_P1_SH: diy-part1.sh                         # 自定义前置脚本1
-  DIY_P2_SH: diy-part2.sh                         # 自定义后置脚本2
-  UPLOAD_BIN_DIR: false                           # 是否上传完整编译bin目录
-  UPLOAD_FIRMWARE: true                           # 是否上传编译好的固件
-  UPLOAD_RELEASE: true                            # 是否发布到Releases版本
-  TZ: Asia/Shanghai                               # 设置时区为上海
+  # OpenWrt源码仓库地址
+  REPO_URL: https://github.com/coolsnowwolf/lede
+  # 源码分支
+  REPO_BRANCH: 20251001
+  # 更新日志
+  RELEASE_NOTES: release.txt
+  # 自定义前置脚本1
+  DIY_P1_SH: diy-part1.sh
+  # 自定义后置脚本2
+  DIY_P2_SH: diy-part2.sh
+  # 是否上传完整编译bin目录
+  UPLOAD_BIN_DIR: false
+  # 是否上传编译好的固件
+  UPLOAD_FIRMWARE: true
+  # 是否发布到Releases版本
+  UPLOAD_RELEASE: true
+  # 是否启用编译缓存（ccache）
+  USE_CCACHE: true
+  # 编译缓存文件存放目录
+  CCACHE_DIR: /workdir/ccache
+  # 设置时区为上海
+  TZ: Asia/Shanghai
 
 # 工作流写入权限
 permissions:
@@ -38,6 +50,11 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # 这里写设备名，自动匹配 configs/设备名.config
+        device: [x86_64, nanopc_t6]
 
     steps:
     - name: 检出仓库代码到运行环境
@@ -75,6 +92,15 @@ jobs:
         # 赋予工作目录权限
         sudo chown $USER:$GROUPS /workdir
 
+    - name: 缓存加速编译（第一次使用后生效）
+      if: env.USE_CCACHE == 'true'
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.CCACHE_DIR }}
+        key: ${{ runner.os }}-ccache-${{ matrix.device }}-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-ccache-${{ matrix.device }}-
+
     - name: 克隆OpenWrt源码到工作目录
       # 指定执行目录
       working-directory: /workdir
@@ -106,7 +132,7 @@ jobs:
         # 复制自定义files文件到源码目录
         [ -e files ] && mv files openwrt/files
         # 复制自定义固件配置.config到源码目录
-        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
+        cp configs/${{ matrix.device }}.config openwrt/.config
         # 添加第二阶段脚本执行权限
         chmod +x $DIY_P2_SH
         # 进入openwrt目录
