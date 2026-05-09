@@ -1,33 +1,27 @@
-name: lede_Build 缓存测试
-on:
-  workflow_dispatch:
-
-env:
-  USE_CCACHE: true
-  CCACHE_DIR: $HOME/.ccache
+name: 极简缓存测试
+on: workflow_dispatch
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-22.04
-    strategy:
-      fail-fast: false
-      matrix:
-        device: [nanopc_t6]
-
     steps:
-    - uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
-    # ========== 最简洁的缓存代码 ==========
-    - name: 创建缓存目录
-      run: mkdir -p $HOME/.ccache && touch $HOME/.ccache/test
+      # 1. 创建目录 + 写入测试文件（确保目录非空且存在）
+      - name: 准备缓存目录
+        run: |
+          mkdir -p ~/.ccache
+          echo "Hello Cache" > ~/.ccache/test.txt
 
-    - name: 缓存
-      uses: actions/cache@v5
-      id: cache
-      with:
-        path: $HOME/.ccache
-        key: test-${{ matrix.device }}
+      # 2. 缓存核心步骤（最简写法）
+      - name: 保存/加载缓存
+        uses: actions/cache@v5
+        with:
+          path: ~/.ccache
+          key: mytestcache-v1
 
-    - name: 查看结果
-      run: echo "缓存命中：${{ steps.cache.outputs.cache-hit }}"
-    # =====================================
+      # 3. 验证
+      - name: 查看缓存状态
+        run: |
+          echo "cache-hit: ${{ steps.保存/加载缓存.outputs.cache-hit }}"
+          cat ~/.ccache/test.txt
