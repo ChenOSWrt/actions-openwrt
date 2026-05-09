@@ -1,5 +1,7 @@
 name: 测试Release
 on: workflow_dispatch
+env:
+  RELEASE_NOTES: release.txt
 
 jobs:
   test:
@@ -26,8 +28,6 @@ jobs:
             NUM=$((NUM + 1))
           fi
           echo "release_tag=$YM-V$NUM" >> $GITHUB_OUTPUT
-          # 创建发布说明文件
-          touch release.txt
           # 标记标签生成成功
           echo "status=success" >> $GITHUB_OUTPUT
 
@@ -38,4 +38,4 @@ jobs:
         run: |
           gh release create ${{ steps.tag.outputs.release_tag }} \
             --title "${{ steps.tag.outputs.release_tag }}" \
-            --notes "这是自动生成的测试版本"
+            --notes-file ${{ env.RELEASE_NOTES }}
