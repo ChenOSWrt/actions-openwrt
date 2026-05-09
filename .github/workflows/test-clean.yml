@@ -12,19 +12,24 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: 清理旧工作流记录
+        if: always()
         run: |
-          gh run list --workflow "测试Release" --limit 100 --json databaseId -q '.[2:][] | .databaseId' | xargs -n 1 gh run delete
-        env:
+          # 获取需要删除的工作流记录（保留最新2个）
+          gh run list --workflow "${{ github.workflow }}" --limit 100 \
+            --json databaseId -q '.[2:][] | .databaseId' \
+            | xargs -n 1 gh run delete
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 清理旧Releases
         run: |
+          # 获取需要删除的标签列表（保留最新2个）
           TAGS=$(gh release list --json tagName --jq '.[2:][] | .tagName')
           for tag in $TAGS; do
             echo "正在删除: $tag"
-            gh release delete "$tag" --yes  # 删除 Release
-            git push origin --delete "$tag" # 删除 Git 标签（关键！）
+            # 删除 Release
+            gh release delete "$tag" --yes
+            # 删除 Tags
+            git push origin --delete "$tag"
           done
-          # gh release list --json tagName --jq '.[2:][] | .tagName' | xargs -r -n 1 gh release delete --yes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
