@@ -1,33 +1,10 @@
-#
-# 文件路径：.github/workflows/lede_Build.yml
-# 文件说明：手动编译固件 → 已修改为【缓存测试专用，不编译】
-#
-# Copyright (c) 2026 ChenOSWrt
-#
-# 本项目为免费开源软件，遵循 MIT 开源许可证协议。
-# 详细许可条款请参阅仓库内 LICENSE 文件。
-#
-
-name: lede_Build 缓存测试版（不编译）
+name: lede_Build 缓存测试
 on:
   workflow_dispatch:
 
 env:
-  REPO_URL: https://github.com/coolsnowwolf/lede
-  REPO_BRANCH: 20251001
-  RELEASE_NOTES: release.txt
-  DIY_P1_SH: diy-part1.sh
-  DIY_P2_SH: diy-part2.sh
-  UPLOAD_BIN_DIR: false
-  UPLOAD_FIRMWARE: true
-  UPLOAD_RELEASE: true
   USE_CCACHE: true
   CCACHE_DIR: $HOME/.ccache
-  TZ: Asia/Shanghai
-
-permissions:
-  contents: write
-  packages: write
 
 jobs:
   build:
@@ -38,71 +15,19 @@ jobs:
         device: [nanopc_t6]
 
     steps:
-    - name: 检出仓库代码到运行环境
-      uses: actions/checkout@v6
+    - uses: actions/checkout@v6
 
-    - name: 初始化环境（仅创建目录，不安装依赖）
-      run: |
-        sudo mkdir -p /workdir
-        sudo chown $USER:$GROUPS /workdir
+    # ========== 最简洁的缓存代码 ==========
+    - name: 创建缓存目录
+      run: mkdir -p $HOME/.ccache && touch $HOME/.ccache/test
 
-    # ===================== 缓存逻辑完全保留你的原版 =====================
-    - name: 准备缓存目录
-      run: mkdir -p $HOME/.ccache
-
-    - name: 写入缓存测试标记（用来验证是否命中）
-      run: |
-        echo "RunID: $GITHUB_RUN_ID 设备: ${{ matrix.device }}" > $HOME/.ccache/cache_test.txt
-        ls -lh $HOME/.ccache
-        cat $HOME/.ccache/cache_test.txt
-
-    - name: 缓存加速编译（第一次编译成功后生效）
-      if: env.USE_CCACHE == 'true'
-      id: ccache
+    - name: 缓存
       uses: actions/cache@v5
+      id: cache
       with:
-        path: ${{ env.CCACHE_DIR }}
-        key: ${{ runner.os }}-ccache-${{ matrix.device }}-${{ github.sha }}
-        restore-keys: |
-          ${{ runner.os }}-ccache-${{ matrix.device }}-
+        path: $HOME/.ccache
+        key: test-${{ matrix.device }}
 
-    # ===================== 缓存结果判断（核心看这里） =====================
-    - name: 查看缓存是否命中
-      run: |
-        if [ "${{ steps.ccache.outputs.cache-hit }}" = "true" ]; then
-          echo "========================================================="
-          echo " ✅ 缓存成功命中！"
-          echo " 缓存内容："
-          cat $CCACHE_DIR/cache_test.txt
-          echo "========================================================="
-        else
-          echo "========================================================="
-          echo " ❌ 缓存未命中（第一次运行正常）"
-          echo " 本次运行结束后会自动保存缓存！"
-          echo "========================================================="
-        fi
-
-    # ===================== 以下所有耗时步骤全部禁用 =====================
-    - name: 已跳过克隆源码
-      run: echo "跳过克隆源码"
-      if: false
-
-    - name: 已跳过DIY脚本
-      run: echo "跳过DIY脚本"
-      if: false
-
-    - name: 已跳过更新插件
-      run: echo "跳过更新插件"
-      if: false
-
-    - name: 已跳过编译
-      run: echo "跳过编译"
-      if: false
-
-    - name: 已跳过上传
-      run: echo "跳过上传"
-      if: false
-
-    - name: 已跳过发布
-      run: echo "跳过发布"
-      if: false
+    - name: 查看结果
+      run: echo "缓存命中：${{ steps.cache.outputs.cache-hit }}"
+    # =====================================
