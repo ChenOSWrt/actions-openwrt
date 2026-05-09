@@ -19,6 +19,12 @@ jobs:
 
       - name: 清理旧Releases
         run: |
-          gh release list --json tagName --jq '.[2:][] | .tagName' | xargs -r -n 1 gh release delete --yes
+          TAGS=$(gh release list --json tagName --jq '.[2:][] | .tagName')
+          for tag in $TAGS; do
+            echo "正在删除: $tag"
+            gh release delete "$tag" --yes  # 删除 Release
+            git push origin --delete "$tag" # 删除 Git 标签（关键！）
+          done
+          # gh release list --json tagName --jq '.[2:][] | .tagName' | xargs -r -n 1 gh release delete --yes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
