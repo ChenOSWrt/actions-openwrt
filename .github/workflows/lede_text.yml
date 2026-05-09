@@ -237,11 +237,12 @@ jobs:
     - name: 将固件发布到GitHub Releases
       if: steps.tag.outputs.status == 'success' && !cancelled()
       run: |
-        # TAG=${{ steps.tag.outputs.release_tag }}
-        # DEVICE=${{ matrix.device }}
-      
-        gh release create ${{ steps.tag.outputs.release_tag }} \
-          --title "${{ steps.tag.outputs.release_tag }}" \
+        TAG=${{ steps.tag.outputs.release_tag }}
+        # 先尝试删除（避免测试时重复报错）
+        gh release delete "$TAG" -y 2>/dev/null || true
+        # 创建 Release
+        gh release create "$TAG" \
+          --title "$TAG" \
           --notes-file ${{ env.RELEASE_NOTES }} \
           ${{ env.FIRMWARE }}/*
       env:
