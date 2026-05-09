@@ -215,7 +215,11 @@ jobs:
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       run: |
         # 以日期时间作为版本标签
-        echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
+        # echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
+        YEAR=$(date +%Y)
+        LAST=$(git tag | grep "^$YEAR-V" | sort -V | tail -1)
+        NUM=${LAST##*V} && NUM=$((NUM+1)) || NUM=1
+        echo "release_tag=$YEAR-V$NUM" >> $GITHUB_OUTPUT
         # 创建发布说明文件
         touch release.txt
         # 可选：添加外链下载地址（预留）
