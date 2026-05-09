@@ -241,11 +241,9 @@ jobs:
       
     # 自动清理旧的Workflow运行记录
     - name: Delete workflow runs
+      if: always()
       run: |
-        # 获取当前工作流ID
-        wid=$(gh workflow list --json name,id -q '.[] | select(.name == "lede固件编译") | .id')
-        # 列出最多100个 Releases（按最新排序），[2:] 跳过最新2条，第3条开始删
-        gh run list --workflow $wid --limit 100 --json databaseId -q ".[2:].databaseId" | xargs -r gh run delete
+        gh run list --workflow "${{ github.workflow }}" --limit 100 --json databaseId -q '.[2:][] | .databaseId' | xargs -n 1 gh run delete
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -253,7 +251,6 @@ jobs:
     - name: Clean old releases
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       run: |
-        # 列出最多100个 Releases（按最新排序），+3 跳过最新2条，第3条开始删
-        gh release list --limit 100 | tail -n +3 | awk '{print $1}' | xargs -I {} gh release delete {} --yes --cleanup-tag
+        gh release list --json tagName --jq '.[2:][] | .tagName' | xargs -r -n 1 gh release delete --yes
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
