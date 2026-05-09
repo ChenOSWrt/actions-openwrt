@@ -190,11 +190,12 @@ jobs:
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       run: |
         # 以日期时间作为版本标签
-        echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
+        # echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
+        YM=$(date +%Y%m)
+        NUM=$(($(git tag|grep ^$YM-V|sort -V|tail -1|sed 's/[^0-9]9//g')+1))
+        echo "release_tag=$YM-V${NUM:-1}" >> $GITHUB_OUTPUT
         # 创建发布说明文件
         touch release.txt
-        # 可选：添加外链下载地址（预留）
-        [ ${UPLOAD_GOFILE} = true && ${{ steps.gofile.outputs.url }} ] && echo "🔗 [GoFile](${{ steps.gofile.outputs.url }})" >> release.txt
         # 标记标签生成成功
         echo "status=success" >> $GITHUB_OUTPUT
  
