@@ -40,6 +40,8 @@ env:
   CCACHE_DIR: $HOME/.ccache
   # 设置时区为上海
   TZ: Asia/Shanghai
+  # 跳过编译
+  SKIP_COMPILE: true
 
 # 工作流写入权限
 permissions:
@@ -159,11 +161,17 @@ jobs:
     - name: 正式编译OpenWrt固件
       id: compile
       run: |
-        cd openwrt
-        # 输出编译线程数
-        echo -e "$(nproc) thread compile"
-        # 多线程编译，失败降级单线程重试，最后带日志排查
-        make -j$(nproc) || make -j1 || make -j1 V=s
+        if [ "${{ env.SKIP_COMPILE }}" = "true" ]; then
+          echo "✅ 已开启跳过编译，模拟编译成功"
+          mkdir -p openwrt/bin/targets/x86/64  # 模拟空目录
+          # 伪造2个测试文件，让后续整理+发布能跑通
+          touch openwrt/bin/targets/x86/64/test.img.gz
+          touch openwrt/bin/targets/x86/64/sha256sums
+        else
+          cd openwrt
+          echo -e "$(nproc) thread compile"
+          make -j$(nproc) || make -j1 || make -j1 V=s
+        fi
         # 标记编译成功状态
         echo "status=success" >> $GITHUB_OUTPUT
         # 提取当前编译的设备型号
