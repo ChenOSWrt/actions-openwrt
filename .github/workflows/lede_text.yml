@@ -197,15 +197,16 @@ jobs:
       # 开启固件上传且未取消任务才执行
       if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
-        # 进入固件输出目录
-        cd openwrt/bin/targets/*/*
-        # 保留.img、.img.gz、sha256sums文件
-        find . -type f ! -name '*.img' ! -name '*.img.gz' ! -name 'sha256sums' -delete
+        # 进入固件输出目录（适配真实编译和测试模式）
+        if [ -d "openwrt/bin/targets" ]; then
+          cd openwrt/bin/targets/*/* || true
+        fi
+        find . -type f ! -name '*.img' ! -name '*.img.gz' ! -name 'sha256sums' -delete 2>/dev/null || true
         # 删除多余软件包文件夹
-        rm -rf packages
+        rm -rf packages 2>/dev/null || true
         # 显示最终剩下的文件（你可以在日志里看到）
         echo "最终保留的文件："
-        ls -lh
+        ls -lh 2>/dev/null || echo "目录为空（测试模式）"
         # 固件路径写入环境变量
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         # 标记整理完成
