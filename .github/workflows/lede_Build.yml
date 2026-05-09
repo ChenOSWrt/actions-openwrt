@@ -226,6 +226,9 @@ jobs:
     - name: 将固件发布到GitHub Releases
       if: steps.tag.outputs.status == 'success' && !cancelled()
       run: |
+        # TAG=${{ steps.tag.outputs.release_tag }}
+        # DEVICE=${{ matrix.device }}
+      
         gh release create ${{ steps.tag.outputs.release_tag }} \
           --title "${{ steps.tag.outputs.release_tag }}" \
           --notes-file ${{ env.RELEASE_NOTES }} \
