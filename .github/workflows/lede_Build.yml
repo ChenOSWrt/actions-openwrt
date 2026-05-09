@@ -8,10 +8,10 @@
 # 详细许可条款请参阅仓库内 LICENSE 文件。
 #
 
-# 定义当前GitHub Actions工作流名称
+# 当前GitHub Actions工作流名称
 name: lede_Build
 
-# 定义工作流触发条件
+# 工作流触发条件
 on:
   repository_dispatch:  # 支持仓库API远程触发
   workflow_dispatch:    # 支持手动在GitHub页面点击运行
@@ -29,27 +29,24 @@ env:
   UPLOAD_RELEASE: true                            # 是否发布到Releases版本
   TZ: Asia/Shanghai                               # 设置时区为上海
 
-# 加上写入权限
+# 工作流写入权限
 permissions:
   contents: write
   packages: write
 
-# 定义编译任务
+# 编译任务
 jobs:
   build:
-    # 指定运行环境为Ubuntu 22.04
     runs-on: ubuntu-22.04
 
-    # 编译执行步骤列表
     steps:
-    # 检出仓库代码到运行环境
-    - name: Checkout
+    - name: 检出仓库代码到运行环境
       uses: actions/checkout@v6
 
-    # 初始化编译环境、安装依赖、清理冗余
-    - name: Initialization environment
+    - name: 初始化编译环境、安装依赖、清理冗余
       env:
-        DEBIAN_FRONTEND: noninteractive  # 非交互模式安装软件
+        # 非交互模式安装软件
+        DEBIAN_FRONTEND: noninteractive
       run: |
         # 清理系统多余缓存与目录，释放空间
         sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
@@ -78,9 +75,9 @@ jobs:
         # 赋予工作目录权限
         sudo chown $USER:$GROUPS /workdir
 
-    # 克隆OpenWrt源码到工作目录
-    - name: Clone source code
-      working-directory: /workdir  # 指定执行目录
+    - name: 克隆OpenWrt源码到工作目录
+      # 指定执行目录
+      working-directory: /workdir
       run: |
         # 查看当前磁盘空间
         df -hT $PWD
@@ -88,9 +85,8 @@ jobs:
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         # 创建软链接，方便后续调用
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
-
-    # 加载自定义插件源配置并执行第一阶段自定义脚本
-    - name: Load custom feeds
+ 
+    - name: 加载自定义插件源配置并执行diy-part1.sh自定义脚本
       run: |
         # 如果存在自定义feeds配置则覆盖源码默认配置
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
@@ -101,16 +97,13 @@ jobs:
         # 执行第一阶段DIY脚本
         $GITHUB_WORKSPACE/$DIY_P1_SH
 
-    # 更新插件源索引
-    - name: Update feeds
+    - name: 更新插件源索引
       run: cd openwrt && ./scripts/feeds update -a
 
-    # 安装所有插件源软件包
-    - name: Install feeds
+    - name: 安装所有插件源软件包
       run: cd openwrt && ./scripts/feeds install -a
 
-    # 加载自定义配置、文件并执行第二阶段自定义脚本
-    - name: Load custom configuration
+    - name: 加载自定义配置、文件并执行diy-part2.sh自定义脚本
       run: |
         # 复制自定义files文件到源码目录
         [ -e files ] && mv files openwrt/files
@@ -123,8 +116,7 @@ jobs:
         # 执行第二阶段DIY脚本
         $GITHUB_WORKSPACE/$DIY_P2_SH
 
-    # 下载编译所需源码包，清理无效小文件
-    - name: Download package
+    - name: 下载编译所需源码包，清理无效小文件
       id: package
       run: |
         cd openwrt
@@ -137,8 +129,7 @@ jobs:
         # 删除无效小文件
         find dl -size -1024c -exec rm -f {} \;
 
-    # 正式编译OpenWrt固件
-    - name: Compile the firmware
+    - name: 正式编译OpenWrt固件
       id: compile
       run: |
         cd openwrt
@@ -155,22 +146,21 @@ jobs:
         # 生成时间戳写入环境变量
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
-    # 编译完成后检查磁盘占用（未取消任务时执行）
-    - name: Check space usage
+    - name: 编译完成后检查磁盘占用（未取消任务时执行）
       if: (!cancelled())
       run: df -hT
 
-    # 上传完整bin编译目录为制品
-    - name: Upload bin directory
+    - name: 上传完整bin编译目录为制品
       uses: actions/upload-artifact@v6
       # 编译成功且开启上传bin目录才执行
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
       with:
-        name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}  # 打包名称
-        path: openwrt/bin                                            # 上传路径
+        # 打包名称
+        name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        # 上传路径
+        path: openwrt/bin
 
-    # 整理固件目录，删除无用packages
-    - name: Organize files
+    - name: 整理固件目录，删除无用packages
       id: organize
       # 开启固件上传且未取消任务才执行
       if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
@@ -184,17 +174,17 @@ jobs:
         # 标记整理完成
         echo "status=success" >> $GITHUB_OUTPUT
 
-    # 上传纯净固件为GitHub Actions制品
-    - name: Upload firmware directory
+    - name: 上传纯净固件为GitHub Actions制品
       uses: actions/upload-artifact@v6
       # 目录整理成功且未取消任务才执行
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
-        name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}  # 固件包名称
-        path: ${{ env.FIRMWARE }}                                          # 固件路径
+        # 固件包名称
+        name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        # 固件路径
+        path: ${{ env.FIRMWARE }}
 
-    # 生成Releases版本标签和说明文件
-    - name: Generate release tag
+    - name: 生成Releases版本标签和说明文件
       id: tag
       # 开启版本发布且未取消任务才执行
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
@@ -207,9 +197,8 @@ jobs:
         [ ${UPLOAD_GOFILE} = true && ${{ steps.gofile.outputs.url }} ] && echo "🔗 [GoFile](${{ steps.gofile.outputs.url }})" >> release.txt
         # 标记标签生成成功
         echo "status=success" >> $GITHUB_OUTPUT
-
-    # 将固件发布到GitHub Releases
-    - name: Upload firmware to release
+ 
+    - name: 将固件发布到GitHub Releases
       uses: softprops/action-gh-release@v3
       # 标签生成成功且未取消任务才执行
       if: steps.tag.outputs.status == 'success' && !cancelled()
@@ -220,15 +209,13 @@ jobs:
         body_path: release.txt
         files: ${{ env.FIRMWARE }}/*
       
-    # 自动清理旧的Workflow运行记录
-    - name: Delete workflow runs
+    - name: 自动清理旧的Workflow运行记录
       uses: Mattraks/delete-workflow-runs@v2.1
       with:
         retain_days: 0          # 不保留历史天数
         keep_minimum_runs: 2    # 最少保留2条运行记录
 
-    # 自动删除老旧Releases版本
-    - name: Remove old Releases
+    - name: 自动删除老旧Releases版本
       uses: dev-drprasad/delete-older-releases@master
       # 开启版本发布且未取消任务才执行
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
