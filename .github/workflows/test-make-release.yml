@@ -32,5 +32,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create ${{ steps.tag.outputs.release_tag }} \
-            --title "测试版本 ${{ steps.tag.outputs.release_tag }}" \
+            --title "${{ steps.tag.outputs.release_tag }}" \
             --notes "这是自动生成的测试版本"
