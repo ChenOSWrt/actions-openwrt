@@ -1,27 +1,26 @@
-name: 测试清理功能（不编译固件）
-
-on:
-  workflow_dispatch:
+name: 最终清理测试（无报错版）
+on: workflow_dispatch
 
 jobs:
-  test-clean:
+  clean:
     runs-on: ubuntu-latest
     permissions:
       actions: write
       contents: write
 
     steps:
-      - name: 拉取仓库代码
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
-      - name: 清理旧Workflow记录（测试）
+      # 清理工作流记录（保留最新2条）
+      - name: 删除旧工作流记录
         run: |
           wid=$(gh workflow list --json name,id -q '.[] | select(.name == "新建测试工作流记录") | .id')
-          gh run list --workflow $wid --limit 100 --json databaseId --jq ".[2:][] | .databaseId" | xargs -r gh run delete
+          gh run list --workflow $wid --limit 100 --json databaseId -q '.[2:][] | .databaseId' | xargs -n 1 gh run delete
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 清理旧Releases（测试）
+      # 清理旧 Releases（保留最新2个）
+      - name: 删除旧Releases
         run: |
           gh release list --limit 100 | tail -n +3 | awk '{print $1}' | xargs -I {} gh release delete {} --yes || true
         env:
