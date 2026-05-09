@@ -1,27 +1,29 @@
-name: 极简缓存测试
+name: 缓存测试（必成功版）
 on: workflow_dispatch
 
 jobs:
   test:
     runs-on: ubuntu-22.04
     steps:
+      # 1. 检出代码（必须）
       - uses: actions/checkout@v6
 
-      # 1. 创建目录 + 写入测试文件（确保目录非空且存在）
+      # 2. 创建缓存目录 + 写入测试文件（确保目录存在且非空）
       - name: 准备缓存目录
         run: |
           mkdir -p ~/.ccache
           echo "Hello Cache" > ~/.ccache/test.txt
 
-      # 2. 缓存核心步骤（最简写法）
-      - name: 保存/加载缓存
+      # 3. 加载/保存缓存（核心步骤）
+      - name: 缓存
         uses: actions/cache@v5
+        id: cache
         with:
           path: ~/.ccache
-          key: mytestcache-v1
+          key: test-cache-1
 
-      # 3. 验证
-      - name: 查看缓存状态
+      # 4. 验证（确保任务成功）
+      - name: 查看结果
         run: |
-          echo "cache-hit: ${{ steps.保存/加载缓存.outputs.cache-hit }}"
+          echo "Cache hit: ${{ steps.cache.outputs.cache-hit }}"
           cat ~/.ccache/test.txt
