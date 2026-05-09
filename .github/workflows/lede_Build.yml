@@ -211,17 +211,25 @@ jobs:
         files: ${{ env.FIRMWARE }}/*
       
     - name: 自动清理旧的Workflow运行记录
-      uses: Mattraks/delete-workflow-runs@v2.1
-      with:
-        retain_days: 0          # 不保留历史天数
-        keep_minimum_runs: 2    # 最少保留2条运行记录
+      if: always()
+      run: |
+        # 获取需要删除的100条工作流记录（保留最新2个）
+        gh run list --workflow "${{ github.workflow }}" --limit 100 \
+          --json databaseId -q '.[2:][] | .databaseId' \
+          | xargs -n 1 gh run delete
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: 自动删除老旧Releases版本
-      uses: dev-drprasad/delete-older-releases@master
-      # 开启版本发布且未取消任务才执行
+    - name: 自动删除老旧Releases和Tags版本
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
-      with:
-        keep_latest: 3                      # 只保留最新3个版本
-        delete_tags: true                   # 自动删除旧版本对应的标签
+      run: |
+        # 获取需要删除的标签列表（保留最新2个）
+        TAGS=$(gh release list --json tagName --jq '.[2:][] | .tagName')
+        for tag in $TAGS; do
+          echo "正在删除: $tag"
+          # 删除 Release
+          gh release delete "$tag" --yes
+          # 删除 Tags
+          git push origin --delete "$tag"
+        done
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 仓库授权令牌
