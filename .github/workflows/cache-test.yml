@@ -1,0 +1,42 @@
+name: Cache 缓存测试
+on:
+  workflow_dispatch:
+
+jobs:
+  cache-test:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: 检出仓库代码
+        uses: actions/checkout@v6
+
+      # 1. 固定绝对路径创建缓存目录 + 占位文件（避免空目录、避免变量歧义）
+      - name: 初始化缓存目录
+        run: |
+          mkdir -p /home/runner/.ccache
+          # 新建占位文件，让目录非空，符合GitHub缓存保存规则
+          touch /home/runner/.ccache/.keep
+          # 写入本次运行标识，用来验证缓存是否真的被保存/读取
+          echo "RunID: $GITHUB_RUN_ID" > /home/runner/.ccache/run_log.txt
+          ls -lh /home/runner/.ccache
+
+      # 2. 缓存核心步骤（完全按官方规范写法）
+      - name: 加载/保存缓存
+        id: mycache
+        uses: actions/cache@v5
+        with:
+          path: /home/runner/.ccache
+          # 精确key：系统 + 固定标识 + 本次运行哈希（每次运行key都不一样）
+          key: ${{ runner.os }}-testcache-${{ github.sha }}
+          # 前缀兜底匹配
+          restore-keys: |
+            ${{ runner.os }}-testcache-
+
+      # 3. 判断是否缓存命中
+      - name: 缓存命中结果判断
+        run: |
+          if [ "${{ steps.mycache.outputs.cache-hit }}" = "true" ]; then
+            echo "✅ 本次：精确命中缓存"
+            cat /home/runner/.ccache/run_log.txt
+          else
+            echo "❌ 本次：缓存未命中，任务成功后自动新建缓存"
+          fi
