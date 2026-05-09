@@ -25,7 +25,7 @@ jobs:
             NUM=$(echo "$LAST_TAG" | awk -F 'V' '{print $2}')
             NUM=$((NUM + 1))
           fi
-          echo "release_tag=ChenOSWrt_$YM_V$NUM" >> $GITHUB_OUTPUT
+          echo "release_tag=$YM_V$NUM" >> $GITHUB_OUTPUT
           # 创建发布说明文件
           touch release.txt
           # 标记标签生成成功
@@ -37,5 +37,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create ${{ steps.tag.outputs.release_tag }} \
-            --title "${{ steps.tag.outputs.release_tag }}" \
+            --title "ChenOSWrt_${{ steps.tag.outputs.release_tag }}" \
             --notes "这是自动生成的测试版本"
