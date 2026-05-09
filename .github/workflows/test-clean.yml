@@ -1,18 +1,20 @@
 name: 测试清理功能（不编译固件）
 
 on:
-  workflow_dispatch:  # 手动点击运行
+  workflow_dispatch:
 
 jobs:
   test-clean:
     runs-on: ubuntu-latest
-    # 必须给权限，否则不能删记录、不能删Releases
     permissions:
       actions: write
       contents: write
-      packages: write
 
     steps:
+      # 必须加上这一步！拉取仓库代码，让gh命令知道操作的是哪个仓库
+      - name: 拉取仓库代码
+        uses: actions/checkout@v4
+
       - name: 清理旧Workflow记录（测试）
         run: |
           wid=$(gh workflow list --json name,id -q '.[] | select(.name == "lede固件编译") | .id')
