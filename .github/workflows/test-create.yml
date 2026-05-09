@@ -1,0 +1,9 @@
+name: 新建测试工作流记录
+on: workflow_dispatch
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 测试运行
+        run: echo "这是测试记录"
