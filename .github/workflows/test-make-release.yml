@@ -4,7 +4,13 @@ on: workflow_dispatch
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # 必须给创建Release的权限
     steps:
+      # 必须加上这一步！拉取仓库代码，让gh命令知道操作的是哪个仓库
+      - name: 拉取仓库代码
+        uses: actions/checkout@v6
+
       - name: 创建空测试版本
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
