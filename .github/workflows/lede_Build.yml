@@ -192,21 +192,18 @@ jobs:
         YM=$(date +%Y%m)
         NUM=$(($(git tag|grep ^$YM-V|sort -V|tail -1|sed 's/[^0-9]9//g')+1))
         echo "release_tag=$YM-V${NUM:-1}" >> $GITHUB_OUTPUT
-        # 创建发布说明文件
-        touch release.txt
         # 标记标签生成成功
         echo "status=success" >> $GITHUB_OUTPUT
  
     - name: 将固件发布到GitHub Releases
-      uses: softprops/action-gh-release@v3
-      # 标签生成成功且未取消任务才执行
       if: steps.tag.outputs.status == 'success' && !cancelled()
+      run: |
+        gh release create ${{ steps.tag.outputs.release_tag }} \
+          --title "${{ steps.tag.outputs.release_tag }}" \
+          --notes-file ${{ env.RELEASE_NOTES }} \
+          ${{ env.FIRMWARE }}/*
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 仓库授权令牌
-      with:
-        tag_name: ${{ steps.tag.outputs.release_tag }}
-        body_path: release.txt
-        files: ${{ env.FIRMWARE }}/*
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
     - name: 自动清理旧的Workflow运行记录
       if: always()
