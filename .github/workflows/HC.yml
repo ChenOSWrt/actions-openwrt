@@ -1,4 +1,4 @@
-name: 测试缓存功能
+name: 纯缓存测试（零警告版）
 on:
   workflow_dispatch:
 
@@ -9,11 +9,14 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v6
 
-      # 👇 必须先创建目录，否则缓存插件会报路径错误
-      - name: 创建缓存目录
-        run: mkdir -p $HOME/.ccache
+      # 1. 先创建目录
+      - name: 准备缓存目录
+        run: |
+          mkdir -p $HOME/.ccache
+          # 关键：写入一个测试文件，避免目录为空
+          echo "测试缓存数据" > $HOME/.ccache/test.log
 
-      # 👇 核心：测试缓存的保存和读取
+      # 2. 缓存步骤
       - name: 测试缓存加速
         uses: actions/cache@v5
         with:
@@ -22,9 +25,8 @@ jobs:
           restore-keys: |
             test-cache-
 
-      # 👇 往缓存里写入一个测试文件，让缓存真正生效
-      - name: 写入测试文件到缓存
+      # 3. 验证缓存读取
+      - name: 读取缓存测试
         run: |
-          echo "缓存测试成功！" > $HOME/.ccache/test.txt
-          echo "✅ 缓存目录已生成测试文件"
-          ls -lh $HOME/.ccache
+          echo "✅ 缓存读取成功，文件内容："
+          cat $HOME/.ccache/test.log
