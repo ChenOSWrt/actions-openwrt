@@ -56,7 +56,7 @@ jobs:
       fail-fast: false
       matrix:
         # 这里写设备名，自动匹配 configs/设备名.config
-        device: []
+        device: [X86_64]
 
     steps:
     - name: 检出仓库代码到运行环境
