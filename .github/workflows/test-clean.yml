@@ -13,7 +13,7 @@ jobs:
 
       - name: 清理旧工作流记录
         run: |
-          wid=$(gh workflow list --json name,id -q '.[] | select(.name == "lede固件编译") | .id')
+          wid=$(gh workflow list --json name,id -q '.[] | select(.name == "新建测试Release") | .id')
           gh run list --workflow $wid --limit 100 --json databaseId -q '.[2:][] | .databaseId' | xargs -n 1 gh run delete
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
