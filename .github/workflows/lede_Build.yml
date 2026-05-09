@@ -238,11 +238,11 @@ jobs:
         gh run list --workflow "${{ github.workflow }}" --limit all \
           --json databaseId -q '.[2:][] | .databaseId' \
           | while read -r id; do
-            if [ -n "$id" ]; then
-              echo "正在删除运行记录：$id"
-              gh run delete "$id" || echo "删除失败：$id"
-            fi
-          done
+              if [ -n "$id" ]; then
+                echo "正在删除运行记录：$id"
+                gh run delete "$id" || echo "删除失败：$id"
+              fi
+            done
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
