@@ -138,7 +138,7 @@ jobs:
           /workdir/openwrt/staging_dir
           /workdir/openwrt/toolchain
           ${{ env.CCACHE_DIR }}
-        key: ${{ runner.os }}-lede-${{ matrix.device }}-v5-final
+        key: ${{ runner.os }}-lede-${{ matrix.device }}-v5
         restore-keys: |
           ${{ runner.os }}-lede-${{ matrix.device }}-
 
