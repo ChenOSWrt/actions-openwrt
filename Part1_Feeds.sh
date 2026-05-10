@@ -1,4 +1,5 @@
 #!/bin/bash
+source $GITHUB_WORKSPACE/Part0_Global.sh
 #
 # 文件名字: Part1_Feeds.sh
 # 文件说明: 添加软件源 (更新软件源之前执行)
