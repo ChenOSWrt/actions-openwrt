@@ -1,4 +1,4 @@
-name: Test CCACHE 终极稳定版
+name: Test CCACHE 50MB+ 大缓存
 on:
   workflow_dispatch:
 
@@ -22,33 +22,32 @@ jobs:
           mkdir -p $CCACHE_DIR
           touch $CCACHE_DIR/.keep
 
-      - name: GitHub 缓存配置
+      - name: GitHub 缓存保存
         uses: actions/cache@v5
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ${{ runner.os }}-final-test-v1
+          key: ${{ runner.os }}-BIGCACHE-50MB-v1
 
       - name: 启用 ccache
         run: |
           echo "PATH=/usr/lib/ccache:$PATH" >> $GITHUB_ENV
           echo "CCACHE_DIR=$CCACHE_DIR" >> $GITHUB_ENV
-          echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
+          echo "CCACHE_COMPRESS=0" >> $GITHUB_ENV  # 关闭压缩 = 缓存更大
           echo "CCACHE_MAXSIZE=10G" >> $GITHUB_ENV
           ccache -z
 
-      - name: 【关键】只编译不链接，强制可缓存
+      - name: 【重型编译】生成 1200 个大文件 → 缓存 50MB+
         run: |
           mkdir -p build
           cd build
-          # 这次只生成目标文件（.o），不带链接，确保 ccache 能缓存
-          for i in {1..300}; do
-            echo "int main$i() { return 0; }" > test$i.c
-            gcc -O2 -c test$i.c -o test$i.o
+          for i in {1..1200}; do
+            echo "void func$i() { long a=$i; long b=a*2; long c=b+3; }" > test$i.c
+            gcc -c test$i.c -o test$i.o
           done
 
-      - name: 查看最终缓存（这次一定成功！）
+      - name: 查看缓存大小（一定 50MB+）
         run: |
-          echo "===== CCACHE 状态 ====="
+          echo "========================"
           ccache -s
-          echo "===== 缓存目录大小 ====="
+          echo "========================"
           du -sh $CCACHE_DIR
