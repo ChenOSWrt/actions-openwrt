@@ -46,16 +46,32 @@ permissions:
   contents: write
   packages: write
 
-# 编译任务
+# 扫描设备
 jobs:
+  scan:
+    runs-on: ubuntu-22.04
+    outputs:
+      devices: ${{ steps.scan.outputs.devices }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: 扫描设备
+        id: scan
+        run: |
+          [ -d configs ] || { echo "❌ 无configs目录" && exit 1; }
+          list=$(ls configs/*.config 2>/dev/null | xargs -r basename -s .config)
+          [ -z "$list" ] && { echo "❌ configs目录为空" && exit 1; }
+          echo devices=$(echo "$list" | jq -R . | jq -cs .) >> $GITHUB_OUTPUT
+
+  # 正式编译任务
   build:
+    needs: scan
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
-        # 这里写设备名，自动匹配 configs/设备名.config
-        device: [nanopc_t6]
-
+        device: ${{ fromJson(needs.scan.outputs.devices) }}
+        
+    # 编译执行步骤
     steps:
     - name: 检出仓库代码到运行环境
       uses: actions/checkout@v6
