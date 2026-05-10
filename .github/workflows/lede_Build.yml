@@ -18,7 +18,7 @@ on:
 
 # 全局环境变量配置
 env:
-  ${file(./Part0_global.sh)}
+  ${file(./Part0_Global.sh)}
 
 # 工作流写入权限
 permissions:
