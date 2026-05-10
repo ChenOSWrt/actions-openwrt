@@ -32,7 +32,7 @@ jobs:
       
       - name: 读取全局变量 Part0_Global 参数
         run: |
-          grep -v '^#' Part0_Global.env | grep -v '^$' | sed 's/^/export /' >> $GITHUB_ENV
+          grep -v '^#' Part0_Global.env | grep -v '^$' >> $GITHUB_ENV
           
       - name: 验证 Part0_Global 参数是否存在
         run: env | sort
@@ -62,7 +62,7 @@ jobs:
 
     - name: 加载全局变量 Part0_Global 参数
       run: |
-        grep -v '^#' Part0_Global.env | grep -v '^$' | sed 's/^/export /' >> $GITHUB_ENV
+        grep -v '^#' Part0_Global.env | grep -v '^$' >> $GITHUB_ENV
 
     - name: 初始化编译环境、安装依赖、清理冗余
       env:
@@ -90,7 +90,7 @@ jobs:
         # 清理apt缓存
         sudo -E apt-get -qq clean
         # 设置系统时区
-        sudo timedatectl set-timezone Asia/Shanghai
+        sudo timedatectl set-timezone "$TZ"
         # 创建工作目录
         sudo mkdir -p /workdir
         # 赋予工作目录权限
