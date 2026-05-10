@@ -25,9 +25,9 @@ env:
   # 更新日志
   RELEASE_NOTES: release.txt
   # 自定义前置脚本1
-  DIY_P1_SH: diy-part1.sh
+  PART1_FEEDS: Part1_Feeds.sh
   # 自定义后置脚本2
-  DIY_P2_SH: diy-part2.sh
+  PART2_CUSTOM: Part2_Custom.sh
   # 是否上传完整编译bin目录
   UPLOAD_BIN_DIR: false
   # 是否上传编译好的固件
@@ -121,14 +121,14 @@ jobs:
         # 创建软链接，方便后续调用
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
  
-    - name: 执行 DIY_P1_SH 脚本配置自定义插件源
+    - name: 执行 PART1_FEEDS 脚本配置自定义插件源
       run: |
         # 给自定义脚本添加执行权限
-        chmod +x $DIY_P1_SH
+        chmod +x $PART1_FEEDS
         # 进入openwrt目录
         cd openwrt
-        # 执行第一阶段DIY脚本
-        $GITHUB_WORKSPACE/$DIY_P1_SH
+        # 执行第一阶段PART1脚本
+        $GITHUB_WORKSPACE/$PART1_FEEDS
 
     - name: 更新插件源索引
       run: cd openwrt && ./scripts/feeds update -a
@@ -136,18 +136,18 @@ jobs:
     - name: 安装所有插件源软件包
       run: cd openwrt && ./scripts/feeds install -a
 
-    - name: 加载自定义配置、文件并执行 DIY_P2_SH 脚本
+    - name: 加载自定义配置、文件并执行 PART2_CUSTOM 脚本
       run: |
         # 复制自定义files文件到源码目录
         [ -e files ] && mv files openwrt/files
         # 复制自定义固件配置.config到源码目录
         cp configs/${{ matrix.device }}.config openwrt/.config
         # 添加第二阶段脚本执行权限
-        chmod +x $DIY_P2_SH
+        chmod +x $PART2_CUSTOM
         # 进入openwrt目录
         cd openwrt
-        # 执行第二阶段DIY脚本
-        $GITHUB_WORKSPACE/$DIY_P2_SH
+        # 执行第二阶段PART2脚本
+        $GITHUB_WORKSPACE/$PART2_CUSTOM
 
     - name: 开启 ccache 缓存
       run: |
