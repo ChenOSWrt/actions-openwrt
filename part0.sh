@@ -1,7 +1,3 @@
-#!/bin/bash
-# part0.sh —— 全局变量配置脚本
-# 以后只改这里，yml 永远不动
-
 # OpenWrt 源码
 export REPO_URL="https://github.com/coolsnowwolf/lede"
 export REPO_BRANCH="20251001"
