@@ -25,7 +25,7 @@ env:
   # 更新日志
   RELEASE_NOTES=release.txt
   # 自定义前置脚本1
-  PART1_FEEDS=Part1_feeds.sh
+  PART1_FEEDS=Part1_Feeds.sh
   # 自定义后置脚本2
   PART2_CUSTOM=Part2_Custom.sh
   # 是否上传完整编译bin目录
