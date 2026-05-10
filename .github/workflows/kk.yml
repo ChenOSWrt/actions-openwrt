@@ -1,0 +1,346 @@
+#
+# 文件路径：.github/workflows/lede_Build.yml
+# 文件说明：手动编译固件
+#
+# Copyright (c) 2026 ChenOSWrt
+#
+# 本项目为免费开源软件，遵循 MIT 开源许可证协议。
+# 详细许可条款请参阅仓库内 LICENSE 文件。
+#
+
+# 当前GitHub Actions工作流名称
+name: lede_Build_kk
+
+# 工作流触发条件
+on:
+  repository_dispatch:  # 支持仓库API远程触发
+  workflow_dispatch:    # 支持手动在GitHub页面点击运行
+
+# 全局环境变量配置
+env:
+  # OpenWrt源码仓库地址
+  REPO_URL: https://github.com/coolsnowwolf/lede
+  # 源码分支
+  REPO_BRANCH: 20251001
+  # 更新日志
+  RELEASE_NOTES: release.txt
+  # 自定义前置脚本1
+  PART1_FEEDS: Part1_Feeds.sh
+  # 自定义后置脚本2
+  PART2_CUSTOM: Part2_Custom.sh
+  # 是否上传完整编译bin目录
+  UPLOAD_BIN_DIR: false
+  # 是否上传编译好的固件
+  UPLOAD_FIRMWARE: false
+  # 是否发布到Releases版本
+  UPLOAD_RELEASE: true
+  # 是否启用编译缓存（ccache）
+  USE_CCACHE: true
+  # 编译缓存文件存放目录
+  CCACHE_DIR: /home/runner/.ccache
+  # 设置时区为上海
+  TZ: Asia/Shanghai
+
+# 工作流写入权限
+permissions:
+  contents: write
+  packages: write
+
+# 扫描设备
+jobs:
+  scan:
+    runs-on: ubuntu-22.04
+    outputs:
+      devices: ${{ steps.scan.outputs.devices }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: 扫描设备
+        id: scan
+        run: |
+          [ -d configs ] || { echo "❌ 无configs目录" && exit 1; }
+          list=$(ls configs/*.config 2>/dev/null | xargs -r basename -s .config)
+          [ -z "$list" ] && { echo "❌ 没有找到.config文件，终止编译！" && exit 1; }
+          echo devices=$(echo "$list" | jq -R . | jq -cs .) >> $GITHUB_OUTPUT
+          echo "✅ 扫描到的设备：$list"
+
+  # 正式编译任务
+  build:
+    needs: scan
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        device: ${{ fromJson(needs.scan.outputs.devices) }}
+        
+    # 编译执行步骤
+    steps:
+    - name: 检出仓库代码到运行环境
+      uses: actions/checkout@v6
+
+    - name: 初始化编译环境、安装依赖、清理冗余
+      env:
+        # 非交互模式安装软件
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        # 清理系统多余缓存与目录，释放空间
+        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+        # 清理本地docker镜像
+        sudo docker image prune --all --force
+        # 更新软件源
+        sudo -E apt-get -qq update
+        # 批量安装OpenWrt编译所需全部依赖包
+        sudo -E apt-get -qq install \
+        ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
+        bzip2 ccache clang cmake cpio curl device-tree-compiler ecj fastjar flex gawk gettext gcc-multilib \
+        g++-multilib git gnutls-dev gperf haveged help2man intltool lib32gcc-s1 libc6-dev-i386 libelf-dev \
+        libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses-dev libpython3-dev \
+        libreadline-dev libssl-dev libtool libyaml-dev libz-dev lld llvm lrzsz mkisofs msmtp nano \
+        ninja-build p7zip p7zip-full patch pkgconf python3 python3-pip python3-ply python3-docutils \
+        python3-pyelftools qemu-utils re2c rsync scons squashfs-tools subversion swig texinfo uglifyjs \
+        upx-ucl unzip vim wget xmlto xxd zlib1g-dev zstd
+        # 卸载无用依赖
+        sudo -E apt-get -qq autoremove --purge
+        # 清理apt缓存
+        sudo -E apt-get -qq clean
+        # 设置系统时区
+        sudo timedatectl set-timezone "$TZ"
+        # 创建工作目录
+        sudo mkdir -p /workdir
+        # 赋予工作目录权限
+        sudo chown $USER:$GROUPS /workdir
+
+    - name: 创建缓存目录
+      run: |
+        mkdir -p ${{ env.CCACHE_DIR }}
+        touch ${{ env.CCACHE_DIR }}/.keep
+
+    ####################################################################################
+    # 🔴 修改点1：注释你原本单独的ccache缓存（保留不删除），新增全局组合缓存
+    ####################################################################################
+    # - name: 首次编译生成缓存（后续编译加载云端缓存）
+    #   if: env.USE_CCACHE == 'true'
+    #   id: ccache
+    #   uses: actions/cache@v5
+    #   with:
+    #     path: ${{ env.CCACHE_DIR }}
+    #     key: ${{ runner.os }}-ccache-${{ matrix.device }}-v1
+    #     restore-keys: |
+    #       ${{ runner.os }}-ccache-${{ matrix.device }}-
+
+    # 🔴 新增：OpenWrt 全量核心编译缓存（覆盖所有耗时目录）
+    - name: OpenWrt全量组合编译缓存
+      id: openwrt_full_cache
+      uses: actions/cache@v5
+      with:
+        path: |
+          /workdir/openwrt/dl
+          /workdir/openwrt/.build_dir
+          /workdir/openwrt/staging_dir
+          /workdir/openwrt/toolchain
+          ${{ env.CCACHE_DIR }}
+        key: ${{ runner.os }}-lede-${{ matrix.device }}-v5-final
+        restore-keys: |
+          ${{ runner.os }}-lede-${{ matrix.device }}-
+
+    ####################################################################################
+    # 🔴 修改点2：注释原有的全新克隆源码代码，新增复用源码逻辑
+    ####################################################################################
+    # - name: 克隆OpenWrt源码到工作目录
+    #   # 指定执行目录
+    #   working-directory: /workdir
+    #   run: |
+    #     # 查看当前磁盘空间
+    #     df -hT $PWD
+    #     # 拉取指定仓库和分支的源码
+    #     git clone $REPO_URL -b $REPO_BRANCH openwrt
+    #     # 创建软链接，方便后续调用
+    #     ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+
+    # 🔴 新增：智能复用源码，存在则不重新克隆
+    - name: 智能初始化OpenWrt源码
+      working-directory: /workdir
+      run: |
+        df -hT $PWD
+        if [ ! -d openwrt ]; then
+          git clone $REPO_URL -b $REPO_BRANCH openwrt
+        else
+          cd openwrt
+          git fetch --depth 1
+          git reset --hard origin/$REPO_BRANCH
+        fi
+        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+ 
+    - name: 执行 PART1_FEEDS 脚本配置自定义插件源
+      run: |
+        # 给自定义脚本添加执行权限
+        chmod +x $PART1_FEEDS
+        # 进入openwrt目录
+        cd openwrt
+        # 执行第一阶段PART1脚本
+        $GITHUB_WORKSPACE/$PART1_FEEDS
+
+    ####################################################################################
+    # 🔴 修改点3：直接注释 feeds update -a（缓存最大杀手）
+    ####################################################################################
+    # - name: 更新插件源索引
+    #   run: cd openwrt && ./scripts/feeds update -a
+
+    - name: 安装所有插件源软件包
+      run: cd openwrt && ./scripts/feeds install -a
+
+    - name: 加载自定义配置、文件并执行 PART2_CUSTOM 脚本
+      run: |
+        # 复制自定义files文件到源码目录
+        [ -e files ] && mv files openwrt/files
+        # 复制自定义固件配置.config到源码目录
+        cp configs/${{ matrix.device }}.config openwrt/.config
+        # 添加第二阶段脚本执行权限
+        chmod +x $PART2_CUSTOM
+        # 进入openwrt目录
+        cd openwrt
+        # 让 OpenWrt 编译系统支持缓存加速
+        echo "CONFIG_CCACHE=y" >> .config
+        # 执行第二阶段PART2脚本
+        $GITHUB_WORKSPACE/$PART2_CUSTOM
+
+    - name: 配置缓存环境变量
+      run: |
+        echo "PATH=/usr/lib/ccache:$PATH" >> $GITHUB_ENV
+        echo "CCACHE_DIR=${{ env.CCACHE_DIR }}" >> $GITHUB_ENV
+        echo "CCACHE_MAXSIZE=10G" >> $GITHUB_ENV
+        ccache -z
+
+    - name: 下载编译所需源码包，清理无效小文件
+      id: package
+      run: |
+        cd openwrt
+        # 生成默认配置
+        make defconfig
+        # 多线程下载源码包
+        make download -j8
+        # 列出小于1024字节的无效文件
+        find dl -size -1024c -exec ls -l {} \;
+        # 删除无效小文件
+        find dl -size -1024c -exec rm -f {} \;
+
+    - name: 正式编译OpenWrt固件
+      id: compile
+      run: |
+        cd openwrt
+        # 输出编译线程数
+        echo -e "$(nproc) thread compile"
+        # 多线程编译，失败降级单线程重试，最后带日志排查
+        make -j$(nproc) || make -j1 || make -j1 V=s
+        # 标记编译成功状态
+        echo "status=success" >> $GITHUB_OUTPUT
+        # 提取当前编译的设备型号
+        grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
+        # 设备名写入环境变量
+        [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
+        # 生成时间戳写入环境变量
+        echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+
+    - name: 编译完成后查看缓存信息
+      run: |
+        echo "缓存版本"
+        ccache --version
+        echo "缓存状态"
+        ccache -s
+        echo "缓存目录大小"
+        du -sh ${{ env.CCACHE_DIR }}
+    
+    - name: 编译完成后检查磁盘占用（未取消任务时执行）
+      if: (!cancelled())
+      run: df -hT
+
+    - name: 上传完整bin编译目录为制品
+      uses: actions/upload-artifact@v6
+      # 编译成功且开启上传bin目录才执行
+      if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
+      with:
+        # 打包名称
+        name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        # 上传路径
+        path: openwrt/bin
+
+    - name: 整理固件目录，删除无用packages
+      id: organize
+      # 开启固件上传且未取消任务才执行
+      if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
+      run: |
+        # 进入固件输出目录
+        cd openwrt/bin/targets/*/*
+        # 保留.img、.img.gz、sha256sums文件
+        find . -type f ! -name '*.img' ! -name '*.img.gz' ! -name 'sha256sums' -delete
+        # 删除多余软件包文件夹
+        rm -rf packages
+        # 显示最终剩下的文件（你可以在日志里看到）
+        echo "最终保留的文件："
+        ls -lh
+        # 固件路径写入环境变量
+        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+        # 标记整理完成
+        echo "status=success" >> $GITHUB_OUTPUT
+
+    - name: 上传纯净固件为GitHub Actions制品
+      uses: actions/upload-artifact@v6
+      # 目录整理成功且未取消任务才执行
+      if: steps.organize.outputs.status == 'success' && !cancelled()
+      with:
+        # 固件包名称
+        name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        # 固件路径
+        path: ${{ env.FIRMWARE }}
+
+    - name: 生成Releases版本标签和说明文件
+      id: tag
+      # 开启版本发布且未取消任务才执行
+      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
+      run: |
+        # 版本号：v1.0.x
+        echo "release_tag=v1.0.${{ github.run_number }}" >> $GITHUB_OUTPUT
+        # 标记标签生成成功
+        echo "status=success" >> $GITHUB_OUTPUT
+ 
+    - name: 将固件发布到GitHub Releases
+      if: steps.tag.outputs.status == 'success' && !cancelled()
+      run: |
+        # TAG=${{ steps.tag.outputs.release_tag }}
+        # DEVICE=${{ matrix.device }}
+      
+        gh release create ${{ steps.tag.outputs.release_tag }} \
+          --title "${{ steps.tag.outputs.release_tag }}" \
+          --notes-file ${{ env.RELEASE_NOTES }} \
+          ${{ env.FIRMWARE }}/*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+    - name: 自动清理旧的Workflow运行记录
+      if: always()
+      run: |
+        # 获取需要删除的工作流记录（保留最新2个）
+        gh run list --workflow "${{ github.workflow }}" --limit all \
+          --json databaseId -q '.[2:] | .[] | .databaseId' \
+          | while read -r id; do
+              if [ -n "$id" ]; then
+                echo "正在删除运行记录：$id"
+                gh run delete "$id" || echo "删除失败：$id"
+              fi
+            done
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: 自动删除老旧Releases和Tags版本
+      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
+      run: |
+        # 获取需要删除的标签列表（保留最新2个）
+        TAGS=$(gh release list --json tagName --jq '.[2:] | .[] | .tagName')
+        for tag in $TAGS; do
+          echo "正在删除: $tag"
+          # 删除 Release
+          gh release delete "$tag" --yes
+          # 删除 Tags
+          git push origin --delete "$tag"
+        done
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
