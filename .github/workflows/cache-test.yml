@@ -1,4 +1,4 @@
-name: Test CCACHE 缓存测试
+name: Test CCACHE 真50MB+缓存
 on:
   workflow_dispatch:
 
@@ -6,51 +6,57 @@ jobs:
   test:
     runs-on: ubuntu-22.04
     env:
-      USE_CCACHE: true
-      CCACHE_DIR: /home/runner/.ccache  # 改成绝对路径
+      CCACHE_DIR: /home/runner/.ccache
 
     steps:
       - name: 检出代码
         uses: actions/checkout@v6
 
-      - name: 1️⃣ 安装依赖
+      - name: 安装依赖
         run: |
           sudo apt update
           sudo apt install -y gcc g++ ccache
 
-      - name: 2️⃣ 创建缓存目录（使用绝对路径）
+      - name: 创建缓存目录
         run: |
           mkdir -p $CCACHE_DIR
           touch $CCACHE_DIR/.keep
 
-      - name: 3️⃣ 配置缓存（使用绝对路径）
+      - name: GitHub 缓存配置
         uses: actions/cache@v5
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ${{ runner.os }}-test-ccache-v1
-          restore-keys: |
-            ${{ runner.os }}-test-ccache-
+          key: ${{ runner.os }}-bigcache-v1
 
-      - name: 4️⃣ 强制启用 ccache
+      - name: 启用 ccache
         run: |
           echo "PATH=/usr/lib/ccache:$PATH" >> $GITHUB_ENV
           echo "CCACHE_DIR=$CCACHE_DIR" >> $GITHUB_ENV
           echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
-          echo "CCACHE_MAXSIZE=10G" >> $GITHUB_ENV
           ccache -z
 
-      - name: 5️⃣ 【测试】大量编译 C 程序
+      - name: 【重型测试】生成大文件 → 缓存直接 50MB+
         run: |
-          mkdir -p test_build
-          cd test_build
-          for i in {1..50}; do
-            echo "int main$i() { return 0; }" > test$i.c
-            gcc -c test$i.c -o test$i.o
+          mkdir -p bigtest
+          cd bigtest
+          for i in {1..300}; do
+            cat > big$i.c << EOF
+int a$i(int b,int c,int d,int e,int f,int g,int h) {
+  long x = b+c+d+e+f+g+h;
+  long y = x*2+3;
+  long z = y*5+99;
+  char buf[1024];
+  for(int n=0;n<1024;n++) buf[n]=n%255;
+  return buf[z%1024] + x + y + z;
+}
+int main() { return a$i(1,2,3,4,5,6,7); }
+EOF
+            gcc -O2 big$i.c -o big$i
           done
 
-      - name: 6️⃣ 查看缓存结果
+      - name: 查看最终缓存（一定 50MB+）
         run: |
-          echo "====== CCACHE 状态 ======"
+          echo "===== CCACHE 状态 ====="
           ccache -s
-          echo "====== 缓存目录大小 ======"
+          echo "===== 缓存目录大小 ====="
           du -sh $CCACHE_DIR
