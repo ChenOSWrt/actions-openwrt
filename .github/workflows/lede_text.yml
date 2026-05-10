@@ -9,7 +9,7 @@
 #
 
 # 当前GitHub Actions工作流名称
-name: lede_Build_text
+name: lede_Build
 
 # 工作流触发条件
 on:
@@ -46,16 +46,33 @@ permissions:
   contents: write
   packages: write
 
-# 编译任务
+# 扫描设备
 jobs:
+  scan:
+    runs-on: ubuntu-22.04
+    outputs:
+      devices: ${{ steps.scan.outputs.devices }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: 扫描设备
+        id: scan
+        run: |
+          [ -d configs ] || { echo "❌ 无configs目录" && exit 1; }
+          list=$(ls configs/*.config 2>/dev/null | xargs -r basename -s .config)
+          [ -z "$list" ] && { echo "❌ 没有找到.config文件，终止编译！" && exit 1; }
+          echo devices=$(echo "$list" | jq -R . | jq -cs .) >> $GITHUB_OUTPUT
+          echo "✅ 扫描到的设备：$list"
+
+  # 正式编译任务
   build:
+    needs: scan
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
-        # 这里写设备名，自动匹配 configs/设备名.config
-        device: [nanopc_t6]
-
+        device: ${{ fromJson(needs.scan.outputs.devices) }}
+        
+    # 编译执行步骤
     steps:
     - name: 检出仓库代码到运行环境
       uses: actions/checkout@v6
@@ -92,12 +109,12 @@ jobs:
         # 赋予工作目录权限
         sudo chown $USER:$GROUPS /workdir
 
-    - name: 创建缓存目录和写入文件（确保目录存在且非空）
+    - name: 创建缓存目录
       run: |
         mkdir -p ${{ env.CCACHE_DIR }}
         touch ${{ env.CCACHE_DIR }}/.keep
 
-    - name: 缓存加速编译（第一次编译成功后生效）
+    - name: 首次编译生成缓存（后续编译加载云端缓存）
       if: env.USE_CCACHE == 'true'
       id: ccache
       uses: actions/cache@v5
@@ -106,9 +123,6 @@ jobs:
         key: ${{ runner.os }}-ccache-${{ matrix.device }}-v1
         restore-keys: |
           ${{ runner.os }}-ccache-${{ matrix.device }}-
-
-    - name: 查看缓存状态
-      run: echo "缓存命中：${{ steps.ccache.outputs.cache-hit }}"
 
     - name: 克隆OpenWrt源码到工作目录
       # 指定执行目录
@@ -146,24 +160,17 @@ jobs:
         chmod +x $PART2_CUSTOM
         # 进入openwrt目录
         cd openwrt
+        # 让 OpenWrt 编译系统支持缓存加速
+        echo "CONFIG_CCACHE=y" >> .config
         # 执行第二阶段PART2脚本
         $GITHUB_WORKSPACE/$PART2_CUSTOM
 
-    - name: 开启 ccache 缓存
+    - name: 配置缓存环境变量
       run: |
         echo "PATH=/usr/lib/ccache:$PATH" >> $GITHUB_ENV
         echo "CCACHE_DIR=${{ env.CCACHE_DIR }}" >> $GITHUB_ENV
         echo "CCACHE_MAXSIZE=10G" >> $GITHUB_ENV
         ccache -z
-
-    - name: 开启 OpenWrt ccache 配置
-      run: |
-        cd openwrt
-        echo "CONFIG_CCACHE=y" >> .config
-        which ccache
-        ccache --version
-        ccache -s
-
 
     - name: 下载编译所需源码包，清理无效小文件
       id: package
@@ -195,13 +202,15 @@ jobs:
         # 生成时间戳写入环境变量
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
-    - name: 编译完成后查看 ccache 状态和大小
+    - name: 编译完成后查看缓存信息
       run: |
-        echo "===== 缓存状态 ====="
+        echo "缓存版本"
+        ccache --version
+        echo "缓存状态"
         ccache -s
-        echo "===== 缓存目录大小 ====="
+        echo "缓存目录大小"
         du -sh ${{ env.CCACHE_DIR }}
-
+    
     - name: 编译完成后检查磁盘占用（未取消任务时执行）
       if: (!cancelled())
       run: df -hT
