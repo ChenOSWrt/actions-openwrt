@@ -7,23 +7,23 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       USE_CCACHE: true
-      CCACHE_DIR: ~/.ccache
+      CCACHE_DIR: /home/runner/.ccache  # 改成绝对路径
 
     steps:
       - name: 检出代码
         uses: actions/checkout@v6
 
-      - name: 1️⃣ 安装依赖（必须放在最前面）
+      - name: 1️⃣ 安装依赖
         run: |
           sudo apt update
           sudo apt install -y gcc g++ ccache
 
-      - name: 2️⃣ 创建缓存目录
+      - name: 2️⃣ 创建缓存目录（使用绝对路径）
         run: |
           mkdir -p $CCACHE_DIR
           touch $CCACHE_DIR/.keep
 
-      - name: 3️⃣ 配置缓存
+      - name: 3️⃣ 配置缓存（使用绝对路径）
         uses: actions/cache@v5
         with:
           path: ${{ env.CCACHE_DIR }}
@@ -31,16 +31,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-test-ccache-
 
-      - name: 4️⃣ 强制启用 ccache（现在已经安装好了）
+      - name: 4️⃣ 强制启用 ccache
         run: |
           echo "PATH=/usr/lib/ccache:$PATH" >> $GITHUB_ENV
           echo "CCACHE_DIR=$CCACHE_DIR" >> $GITHUB_ENV
           echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
           echo "CCACHE_MAXSIZE=10G" >> $GITHUB_ENV
-          # 重置缓存统计
           ccache -z
 
-      - name: 5️⃣ 【测试】大量编译 C 程序 → 强制产生缓存
+      - name: 5️⃣ 【测试】大量编译 C 程序
         run: |
           mkdir -p test_build
           cd test_build
@@ -49,7 +48,7 @@ jobs:
             gcc -c test$i.c -o test$i.o
           done
 
-      - name: 6️⃣ 查看缓存结果（重点看这里！）
+      - name: 6️⃣ 查看缓存结果
         run: |
           echo "====== CCACHE 状态 ======"
           ccache -s
