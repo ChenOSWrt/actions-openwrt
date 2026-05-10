@@ -1,4 +1,4 @@
-name: Test CCACHE 稳定重型测试
+name: Test CCACHE 终极稳定版
 on:
   workflow_dispatch:
 
@@ -26,7 +26,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ${{ runner.os }}-bigcache-v2
+          key: ${{ runner.os }}-final-test-v1
 
       - name: 启用 ccache
         run: |
@@ -36,17 +36,17 @@ jobs:
           echo "CCACHE_MAXSIZE=10G" >> $GITHUB_ENV
           ccache -z
 
-      - name: 【稳定版】生成并编译大量文件
+      - name: 【关键】只编译不链接，强制可缓存
         run: |
-          mkdir -p bigtest
-          cd bigtest
-          # 改用 printf 生成 C 文件，避免 EOF 嵌套错误
+          mkdir -p build
+          cd build
+          # 这次只生成目标文件（.o），不带链接，确保 ccache 能缓存
           for i in {1..300}; do
-            printf "int a%d(int b,int c,int d,int e,int f,int g,int h) {\n  long x = b+c+d+e+f+g+h;\n  long y = x*2+3;\n  long z = y*5+99;\n  char buf[1024];\n  for(int n=0;n<1024;n++) buf[n]=n%%255;\n  return buf[z%%1024] + x + y + z;\n}\nint main() { return a%d(1,2,3,4,5,6,7); }" "$i" "$i" > "big$i.c"
-            gcc -O2 "big$i.c" -o "big$i"
+            echo "int main$i() { return 0; }" > test$i.c
+            gcc -O2 -c test$i.c -o test$i.o
           done
 
-      - name: 查看最终缓存结果
+      - name: 查看最终缓存（这次一定成功！）
         run: |
           echo "===== CCACHE 状态 ====="
           ccache -s
