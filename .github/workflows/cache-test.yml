@@ -1,4 +1,4 @@
-name: Test CCACHE 真50MB+缓存
+name: Test CCACHE 稳定重型测试
 on:
   workflow_dispatch:
 
@@ -26,35 +26,27 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ${{ runner.os }}-bigcache-v1
+          key: ${{ runner.os }}-bigcache-v2
 
       - name: 启用 ccache
         run: |
           echo "PATH=/usr/lib/ccache:$PATH" >> $GITHUB_ENV
           echo "CCACHE_DIR=$CCACHE_DIR" >> $GITHUB_ENV
           echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
+          echo "CCACHE_MAXSIZE=10G" >> $GITHUB_ENV
           ccache -z
 
-      - name: 【重型测试】生成大文件 → 缓存直接 50MB+
+      - name: 【稳定版】生成并编译大量文件
         run: |
           mkdir -p bigtest
           cd bigtest
+          # 改用 printf 生成 C 文件，避免 EOF 嵌套错误
           for i in {1..300}; do
-            cat > big$i.c << EOF
-int a$i(int b,int c,int d,int e,int f,int g,int h) {
-  long x = b+c+d+e+f+g+h;
-  long y = x*2+3;
-  long z = y*5+99;
-  char buf[1024];
-  for(int n=0;n<1024;n++) buf[n]=n%255;
-  return buf[z%1024] + x + y + z;
-}
-int main() { return a$i(1,2,3,4,5,6,7); }
-EOF
-            gcc -O2 big$i.c -o big$i
+            printf "int a%d(int b,int c,int d,int e,int f,int g,int h) {\n  long x = b+c+d+e+f+g+h;\n  long y = x*2+3;\n  long z = y*5+99;\n  char buf[1024];\n  for(int n=0;n<1024;n++) buf[n]=n%%255;\n  return buf[z%%1024] + x + y + z;\n}\nint main() { return a%d(1,2,3,4,5,6,7); }" "$i" "$i" > "big$i.c"
+            gcc -O2 "big$i.c" -o "big$i"
           done
 
-      - name: 查看最终缓存（一定 50MB+）
+      - name: 查看最终缓存结果
         run: |
           echo "===== CCACHE 状态 ====="
           ccache -s
