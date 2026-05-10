@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # OpenWrt源码仓库地址
 REPO_URL: https://github.com/coolsnowwolf/lede
 # 源码分支
