@@ -143,12 +143,12 @@ jobs:
         chmod +x $PART2_CUSTOM
         # 进入openwrt目录
         cd openwrt
-        # 让 OpenWrt 编译系统支持 ccache 加速
+        # 让 OpenWrt 编译系统支持缓存加速
         echo "CONFIG_CCACHE=y" >> .config
         # 执行第二阶段PART2脚本
         $GITHUB_WORKSPACE/$PART2_CUSTOM
 
-    - name: 配置 ccache 环境变量
+    - name: 配置缓存环境变量
       run: |
         echo "PATH=/usr/lib/ccache:$PATH" >> $GITHUB_ENV
         echo "CCACHE_DIR=${{ env.CCACHE_DIR }}" >> $GITHUB_ENV
@@ -185,7 +185,7 @@ jobs:
         # 生成时间戳写入环境变量
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
-    - name: 编译完成后查看 ccache 信息
+    - name: 编译完成后查看缓存信息
       run: |
         echo "缓存版本"
         ccache --version
