@@ -31,7 +31,7 @@ env:
   # 是否上传完整编译bin目录
   UPLOAD_BIN_DIR: false
   # 是否上传编译好的固件
-  UPLOAD_FIRMWARE: true
+  UPLOAD_FIRMWARE: false
   # 是否发布到Releases版本
   UPLOAD_RELEASE: true
   # 是否启用编译缓存（ccache）
