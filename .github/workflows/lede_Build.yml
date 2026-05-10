@@ -37,7 +37,7 @@ env:
   # 是否启用编译缓存（ccache）
   USE_CCACHE: true
   # 编译缓存文件存放目录
-  CCACHE_DIR: $HOME/.ccache
+  CCACHE_DIR: /home/runner/.ccache
   # 设置时区为上海
   TZ: Asia/Shanghai
 
@@ -92,15 +92,18 @@ jobs:
         # 赋予工作目录权限
         sudo chown $USER:$GROUPS /workdir
 
-    - name: 准备缓存目录
-      run: mkdir -p $HOME/.ccache
+    - name: 创建缓存目录
+      run: |
+        mkdir -p ${{ env.CCACHE_DIR }}
+        touch ${{ env.CCACHE_DIR }}/.keep
 
-    - name: 缓存加速编译（第一次编译成功后生效）
+    - name: 首次编译生成缓存（后续编译加载云端缓存）
       if: env.USE_CCACHE == 'true'
+      id: ccache
       uses: actions/cache@v5
       with:
         path: ${{ env.CCACHE_DIR }}
-        key: ${{ runner.os }}-ccache-${{ matrix.device }}-${{ github.sha }}
+        key: ${{ runner.os }}-ccache-${{ matrix.device }}-v1
         restore-keys: |
           ${{ runner.os }}-ccache-${{ matrix.device }}-
 
@@ -140,8 +143,17 @@ jobs:
         chmod +x $PART2_CUSTOM
         # 进入openwrt目录
         cd openwrt
+        # 让 OpenWrt 编译系统支持 ccache 加速
+        echo "CONFIG_CCACHE=y" >> .config
         # 执行第二阶段PART2脚本
         $GITHUB_WORKSPACE/$PART2_CUSTOM
+
+    - name: 配置 ccache 环境变量
+      run: |
+        echo "PATH=/usr/lib/ccache:$PATH" >> $GITHUB_ENV
+        echo "CCACHE_DIR=${{ env.CCACHE_DIR }}" >> $GITHUB_ENV
+        echo "CCACHE_MAXSIZE=10G" >> $GITHUB_ENV
+        ccache -z
 
     - name: 下载编译所需源码包，清理无效小文件
       id: package
@@ -173,6 +185,15 @@ jobs:
         # 生成时间戳写入环境变量
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
+    - name: 编译完成后查看 ccache 信息
+      run: |
+        echo "缓存版本"
+        ccache --version
+        echo "缓存状态"
+        ccache -s
+        echo "缓存目录大小"
+        du -sh ${{ env.CCACHE_DIR }}
+    
     - name: 编译完成后检查磁盘占用（未取消任务时执行）
       if: (!cancelled())
       run: df -hT
