@@ -125,7 +125,7 @@ jobs:
         chmod +x $PART1_FEEDS
         # 进入openwrt目录
         cd openwrt
-        # 执行第一阶段DIY脚本
+        # 执行第一阶段PART1脚本
         $GITHUB_WORKSPACE/$PART1_FEEDS
 
     - name: 更新插件源索引
@@ -144,7 +144,7 @@ jobs:
         chmod +x $PART2_CUSTOM
         # 进入openwrt目录
         cd openwrt
-        # 执行第二阶段DIY脚本
+        # 执行第二阶段PART2脚本
         $GITHUB_WORKSPACE/$PART2_CUSTOM
 
     - name: 下载编译所需源码包，清理无效小文件
