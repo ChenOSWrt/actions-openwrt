@@ -25,9 +25,9 @@ env:
   # 更新日志
   RELEASE_NOTES: release.txt
   # 自定义前置脚本1
-  PART1_FEEDS: diy-part1.sh
+  PART1_FEEDS: Part1_feeds.sh
   # 自定义后置脚本2
-  PART2_CUSTOM: diy-part2.sh
+  PART2_CUSTOM: Part2_Custom.sh
   # 是否上传完整编译bin目录
   UPLOAD_BIN_DIR: false
   # 是否上传编译好的固件
