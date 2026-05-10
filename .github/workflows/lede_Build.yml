@@ -59,7 +59,7 @@ jobs:
         run: |
           [ -d configs ] || { echo "❌ 无configs目录" && exit 1; }
           list=$(ls configs/*.config 2>/dev/null | xargs -r basename -s .config)
-          [ -z "$list" ] && { echo "❌ configs目录为空" && exit 1; }
+          [ -z "$list" ] && { echo "❌ 没有找到.config文件，终止编译！" && exit 1; }
           echo devices=$(echo "$list" | jq -R . | jq -cs .) >> $GITHUB_OUTPUT
 
   # 正式编译任务
