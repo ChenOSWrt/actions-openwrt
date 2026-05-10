@@ -77,6 +77,9 @@ jobs:
     - name: 检出仓库代码到运行环境
       uses: actions/checkout@v6
 
+    - name: 加载 part0 全局变量
+      run: cat part0.env >> $GITHUB_ENV
+
     - name: 初始化编译环境、安装依赖、清理冗余
       env:
         # 非交互模式安装软件
