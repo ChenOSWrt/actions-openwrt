@@ -9,7 +9,7 @@
 #
 
 # 当前GitHub Actions工作流名称
-name: lede_Build
+name: lede_Build_txet
 
 # 工作流触发条件
 on:
