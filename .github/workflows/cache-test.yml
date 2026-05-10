@@ -1,4 +1,4 @@
-name: Test CCACHE 50MB+ 大缓存（修正版）
+name: Test CCACHE 50MB+ 最终稳定版
 on:
   workflow_dispatch:
 
@@ -26,17 +26,16 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ${{ runner.os }}-BIGCACHE-50MB-v2
+          key: ${{ runner.os }}-BIGCACHE-50MB-v3
 
-      - name: 启用 ccache
+      - name: 启用 ccache（只保留必要变量）
         run: |
           echo "PATH=/usr/lib/ccache:$PATH" >> $GITHUB_ENV
           echo "CCACHE_DIR=$CCACHE_DIR" >> $GITHUB_ENV
-          echo "CCACHE_COMPRESS=false" >> $GITHUB_ENV  # 改用 false，避免报错
           echo "CCACHE_MAXSIZE=10G" >> $GITHUB_ENV
           ccache -z
 
-      - name: 【重型编译】生成 1200 个文件 → 缓存 50MB+
+      - name: 【重型编译】生成 1200 个文件
         run: |
           mkdir -p build
           cd build
