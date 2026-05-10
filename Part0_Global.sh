@@ -1,4 +1,14 @@
 #!/bin/bash
+#
+# 文件名字: Part0_Global.sh
+# 文件说明: 全局配置文件
+# 使用说明: 把对应注释 "#" 去掉即可启用功能，按需修改或添加参数
+#
+# Copyright (c) 2026 ChenOSWrt
+#
+# 本项目为免费开源软件，遵循 MIT 开源许可证协议。
+# 详细许可条款请参阅仓库内 LICENSE 文件。
+#
 
 # OpenWrt源码仓库地址
 REPO_URL: https://github.com/coolsnowwolf/lede
