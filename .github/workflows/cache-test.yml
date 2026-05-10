@@ -1,29 +1,54 @@
-name: 缓存测试（必成功版）
-on: workflow_dispatch
+name: Test CCACHE 缓存测试
+on:
+  workflow_dispatch:
 
 jobs:
   test:
     runs-on: ubuntu-22.04
+    env:
+      USE_CCACHE: true
+      CCACHE_DIR: ~/.ccache
+
     steps:
-      # 1. 检出代码（必须）
-      - uses: actions/checkout@v6
+      - name: 检出代码
+        uses: actions/checkout@v6
 
-      # 2. 创建缓存目录 + 写入测试文件（确保目录存在且非空）
-      - name: 准备缓存目录
+      - name: 安装 gcc
+        run: sudo apt update && sudo apt install -y gcc g++
+
+      - name: 创建缓存目录
         run: |
-          mkdir -p ~/.ccache
-          echo "Hello Cache" > ~/.ccache/test.txt
+          mkdir -p $CCACHE_DIR
+          touch $CCACHE_DIR/.keep
 
-      # 3. 加载/保存缓存（核心步骤）
-      - name: 缓存
+      - name: 配置缓存
         uses: actions/cache@v5
-        id: cache
         with:
-          path: ~/.ccache
-          key: test-cache-1
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ runner.os }}-test-ccache-v1
+          restore-keys: |
+            ${{ runner.os }}-test-ccache-
 
-      # 4. 验证（确保任务成功）
-      - name: 查看结果
+      - name: 强制启用 ccache
         run: |
-          echo "Cache hit: ${{ steps.cache.outputs.cache-hit }}"
-          cat ~/.ccache/test.txt
+          echo "PATH=/usr/lib/ccache:$PATH" >> $GITHUB_ENV
+          echo "CCACHE_DIR=$CCACHE_DIR" >> $GITHUB_ENV
+          echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
+          ccache -z
+
+      - name: 【测试】大量编译 C 程序 → 强制产生缓存
+        run: |
+          # 自动生成 50 个 C 语言文件，编译后缓存一定 50MB+
+          mkdir -p test_build
+          cd test_build
+          for i in {1..50}; do
+            echo "int main$i() { return 0; }" > test$i.c
+            gcc -c test$i.c -o test$i.o
+          done
+
+      - name: 查看缓存结果（重点看这里！）
+        run: |
+          echo "====== CCACHE 状态 ======"
+          ccache -s
+          echo "====== 缓存目录大小 ======"
+          du -sh $CCACHE_DIR
