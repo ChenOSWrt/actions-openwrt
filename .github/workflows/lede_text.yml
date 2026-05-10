@@ -153,6 +153,19 @@ jobs:
       run: |
         cd openwrt
         echo "CONFIG_CCACHE=y" >> .config
+        # 强制把 ccache 加入 PATH 最前面，确保编译器优先调用它
+        echo "export PATH=\"/usr/lib/ccache:\$PATH\"" >> $GITHUB_ENV
+        # 强制指定缓存目录，避免 ccache 写到默认位置
+        echo "export CCACHE_DIR=${{ env.CCACHE_DIR }}" >> $GITHUB_ENV
+        # 启用缓存压缩，节省空间
+        echo "export CCACHE_COMPRESS=1" >> $GITHUB_ENV
+        # 设置缓存最大大小，避免无限膨胀
+        echo "export CCACHE_MAXSIZE=10G" >> $GITHUB_ENV
+        # 检查 ccache 是否安装正常
+        which ccache
+        ccache --version
+        ccache -s
+
 
     - name: 下载编译所需源码包，清理无效小文件
       id: package
@@ -183,6 +196,13 @@ jobs:
         [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
         # 生成时间戳写入环境变量
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+
+    - name: 编译完成后查看 ccache 状态和大小
+      run: |
+        echo "===== 缓存状态 ====="
+        ccache -s
+        echo "===== 缓存目录大小 ====="
+        du -sh ${{ env.CCACHE_DIR }}
 
     - name: 编译完成后检查磁盘占用（未取消任务时执行）
       if: (!cancelled())
