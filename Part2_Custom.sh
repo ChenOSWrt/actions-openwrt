@@ -1,5 +1,4 @@
 #!/bin/bash
-source $GITHUB_WORKSPACE/Part0_Global.sh
 #
 # 文件名字: Part2_Custom.sh
 # 文件说明: 固件自定义配置脚本 (更新软件源之后执行)
