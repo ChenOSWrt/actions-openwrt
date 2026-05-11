@@ -81,13 +81,13 @@ jobs:
         sudo chown $USER:$GROUPS /workdir
   
     - name: 创建Ccache缓存目录
+      if: env.USE_CCACHE == 'true'
       run: |
         mkdir -p ${{ env.CCACHE_DIR }}
         touch ${{ env.CCACHE_DIR }}/.keep
   
     - name: 首次编译生成Ccache缓存（后续编译云端加载）
       if: env.USE_CCACHE == 'true'
-      id: ccache
       uses: actions/cache@v5
       with:
         path: ${{ env.CCACHE_DIR }}
@@ -129,6 +129,7 @@ jobs:
         $GITHUB_WORKSPACE/$PART2_CUSTOM
         
     - name: 配置Ccache环境变量
+      if: env.USE_CCACHE == 'true'
       run: |
         echo "PATH=/usr/lib/ccache:$PATH" >> $GITHUB_ENV
         echo "CCACHE_DIR=${{ env.CCACHE_DIR }}" >> $GITHUB_ENV
@@ -161,6 +162,7 @@ jobs:
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
     
     - name: 查看Ccache缓存状态
+      if: env.USE_CCACHE == 'true'
       run: |
         echo "缓存版本"
         ccache --version
