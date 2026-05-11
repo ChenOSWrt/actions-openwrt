@@ -19,7 +19,6 @@ permissions:
   contents: write
   packages: write
 
-
 jobs:
   global:
     runs-on: ubuntu-22.04
