@@ -20,41 +20,14 @@ permissions:
   packages: write
 
 jobs:
-  global:
+  scan:
     runs-on: ubuntu-22.04
     outputs:
-
-      # 全局变量输出
-      REPO_URL: ${{ steps.load_env.outputs.REPO_URL }}
-      REPO_BRANCH: ${{ steps.load_env.outputs.REPO_BRANCH }}
-      RELEASE_NOTES: ${{ steps.load_env.outputs.RELEASE_NOTES }}
-      PART1_FEEDS: ${{ steps.load_env.outputs.PART1_FEEDS }}
-      PART2_CUSTOM: ${{ steps.load_env.outputs.PART2_CUSTOM }}
-      UPLOAD_BIN_DIR: ${{ steps.load_env.outputs.UPLOAD_BIN_DIR }}
-      UPLOAD_FIRMWARE: ${{ steps.load_env.outputs.UPLOAD_FIRMWARE }}
-      UPLOAD_RELEASE: ${{ steps.load_env.outputs.UPLOAD_RELEASE }}
-      USE_CCACHE: ${{ steps.load_env.outputs.USE_CCACHE }}
-      CCACHE_DIR: ${{ steps.load_env.outputs.CCACHE_DIR }}
-      TZ: ${{ steps.load_env.outputs.TZ }}
-     
-      # 设备列表输出
       devices: ${{ steps.scan.outputs.devices }}
     
     steps:
       - uses: actions/checkout@v6
       
-      - name: 加载Part0_Global全局变量
-        id: load_env
-        run: |
-          while IFS='=' read -r key value; do
-            [[ $key =~ ^#.*$ || -z $key ]] && continue
-            value=$(echo "$value" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//" -e 's/ *#.*$//')
-            echo "$key=$value" >> $GITHUB_OUTPUT
-            echo "$key=$value" >> $GITHUB_ENV
-          done < Part0_Global.env
-          echo "✅ 全局变量加载完成："
-          cat $GITHUB_OUTPUT
-
       - name: 扫描CONFIGS设备
         id: scan
         run: |
@@ -65,29 +38,19 @@ jobs:
           echo "✅ 扫描到的设备：$list"
 
   build:
-    needs: global
+    needs: scan
     runs-on: ubuntu-22.04
     strategy:
         fail-fast: false
         matrix:
           device: ${{ fromJson(needs.global.outputs.devices) }}
-    env:
-      REPO_URL: ${{ needs.global.outputs.REPO_URL }}
-      REPO_BRANCH: ${{ needs.global.outputs.REPO_BRANCH }}
-      RELEASE_NOTES: ${{ needs.global.outputs.RELEASE_NOTES }}
-      PART1_FEEDS: ${{ needs.global.outputs.PART1_FEEDS }}
-      PART2_CUSTOM: ${{ needs.global.outputs.PART2_CUSTOM }}
-      UPLOAD_BIN_DIR: ${{ needs.global.outputs.UPLOAD_BIN_DIR }}
-      UPLOAD_FIRMWARE: ${{ needs.global.outputs.UPLOAD_FIRMWARE }}
-      UPLOAD_RELEASE: ${{ needs.global.outputs.UPLOAD_RELEASE }}
-      USE_CCACHE: ${{ needs.global.outputs.USE_CCACHE }}
-      CCACHE_DIR: ${{ needs.global.outputs.CCACHE_DIR }}
-      TZ: ${{ needs.global.outputs.TZ }} # 重点修复这里！
-            
+       
     steps:
-    - name: 拉取代码到虚拟运行环境
-      uses: actions/checkout@v6
-  
+    - uses: actions/checkout@v6
+
+    - name: 加载全局变量
+      run: grep -v '^#' Part0_Global.env | grep -v '^$' >> $GITHUB_ENV
+
     - name: 初始化编译环境
       env:
         DEBIAN_FRONTEND: noninteractive
