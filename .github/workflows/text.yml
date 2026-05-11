@@ -5,7 +5,7 @@
 #
 
 # 工作流Workflows名称
-name: Build
+name: Buildkk
 
 on:
   # 支持API远程触发
