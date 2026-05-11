@@ -24,7 +24,6 @@ jobs:
     runs-on: ubuntu-22.04
     outputs:
       devices: ${{ steps.scan.outputs.devices }}
-    
     steps:
       - uses: actions/checkout@v6
       
@@ -44,7 +43,6 @@ jobs:
         fail-fast: false
         matrix:
           device: ${{ fromJson(needs.global.outputs.devices) }}
-       
     steps:
     - uses: actions/checkout@v6
 
