@@ -5,7 +5,7 @@
 #
 
 # 工作流Workflows名称
-name: BuildKK
+name: Buildkk
 
 on:
   # 支持API远程触发
@@ -32,7 +32,7 @@ jobs:
         run: |
           [ -d configs ] || { echo "❌ 无configs目录" && exit 1; }
           list=$(ls configs/*.config 2>/dev/null | xargs -r basename -s .config)
-          [ -z "$list" ] || { echo "❌ 没有找到.config文件，终止编译！" && exit 1; }
+          [ -z "$list" ] && { echo "❌ 没有找到.config文件，终止编译！" && exit 1; }
           echo devices=$(echo "$list" | jq -R . | jq -cs .) >> $GITHUB_OUTPUT
           echo "✅ 扫描到的设备：$list"
 
@@ -90,9 +90,9 @@ jobs:
       uses: actions/cache@v5
       with:
         path: ${{ env.CCACHE_DIR }}
-        # ✅ 缓存键优化：包含配置文件哈希，确保配置变化时自动重建
+        # 缓存键：包含配置文件哈希，确保配置变化时自动重建
         key: ${{ runner.os }}-ccache-${{ matrix.device }}-${{ hashFiles('configs/${{ matrix.device }}.config') }}-${{ github.run_number }}
-        # ✅ 恢复键优化：只保留两级，减少无效缓存搜索
+        # 恢复键：只保留两级，减少无效缓存搜索
         restore-keys: |
           ${{ runner.os }}-ccache-${{ matrix.device }}-${{ hashFiles('configs/${{ matrix.device }}.config') }}-
           ${{ runner.os }}-ccache-${{ matrix.device }}-
@@ -134,7 +134,7 @@ jobs:
         echo "========================================================"
 
     # ==============================================
-    # 以下保留你原有的代码逻辑，只做必要修正
+    # 以下保留你原有的代码逻辑
     # ==============================================
 
     - name: 克隆OpenWrt源码
@@ -147,7 +147,7 @@ jobs:
         # 创建软链接，方便后续调用
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
         
-        # ✅ 关键：创建dl目录软链接，使用我们缓存的下载目录
+        # 关键：创建dl目录软链接，使用我们缓存的下载目录
         rm -rf openwrt/dl
         ln -sf ${{ env.DL_DIR }} openwrt/dl
 
@@ -171,11 +171,11 @@ jobs:
         chmod +x $PART2_CUSTOM
         cd openwrt
         
-        # ✅ 关键：强制禁用OpenWrt内置ccache，使用系统ccache
+        # 关键：强制禁用OpenWrt内置ccache，使用系统ccache
         sed -i '/CONFIG_CCACHE/d' .config
         echo "CONFIG_CCACHE=n" >> .config
         
-        # ✅ 优化编译参数（不影响兼容性）
+        # 优化编译参数（不影响兼容性）
         sed -i '/CONFIG_EXTRA_OPTIMIZATION/d' .config
         echo "CONFIG_EXTRA_OPTIMIZATION="-O2 -pipe"" >> .config
         
@@ -189,7 +189,7 @@ jobs:
         # 列出和删除小于1024字节的无效文件
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
-        # ✅ 清理dl目录中超过30天的旧文件，控制大小在1GB以内
+        # 清理dl目录中超过30天的旧文件，控制大小在1GB以内
         find dl -type f -mtime +30 -delete
         # 显示dl目录大小
         echo "下载目录大小："
@@ -201,7 +201,7 @@ jobs:
         cd openwrt
         echo -e "$(nproc) thread compile"
         
-        # ✅ 关键：强制使用系统ccache编译所有目标
+        # 关键：强制使用系统ccache编译所有目标
         # 所有重试分支都添加ccache参数，确保100%使用缓存
         make -j$(nproc) \
           CC="ccache gcc" \
@@ -243,7 +243,7 @@ jobs:
         du -sh ${{ env.CCACHE_DIR }}
         echo "源码下载目录大小："
         du -sh ${{ env.DL_DIR }}
-        # ✅ 清理ccache中超过7天未使用的缓存
+        # 清理ccache中超过7天未使用的缓存
         ccache --evict-older-than 7d
     
     - name: 查看磁盘占用
@@ -332,7 +332,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     # ==============================================
-    # ✅ 自动清理旧缓存：防止超过10GB限制
+    # 自动清理旧缓存：防止超过10GB限制
     # ==============================================
     - name: 自动清理旧缓存
       if: always()
