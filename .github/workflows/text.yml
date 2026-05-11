@@ -125,7 +125,6 @@ jobs:
       if: env.USE_CCACHE == 'true'
       run: |
         # 配置ccache环境变量
-        echo "PATH=/usr/lib/ccache:$PATH" >> $GITHUB_ENV
         echo "CCACHE_DIR=${{ env.CCACHE_DIR }}" >> $GITHUB_ENV
         echo "CCACHE_MAXSIZE=${{ env.CCACHE_MAXSIZE }}" >> $GITHUB_ENV
         echo "CCACHE_COMPRESS=${{ env.CCACHE_COMPRESS }}" >> $GITHUB_ENV
@@ -179,9 +178,10 @@ jobs:
         chmod +x $PART2_CUSTOM
         cd openwrt
         
-        # 关键：强制禁用OpenWrt内置ccache，使用系统ccache
+        # ✅ 关键：启用OpenWrt内置ccache，并指定我们的缓存目录
         sed -i '/CONFIG_CCACHE/d' .config
-        echo "CONFIG_CCACHE=n" >> .config
+        echo "CONFIG_CCACHE=y" >> .config
+        echo "CONFIG_CCACHE_DIR=\"${{ env.CCACHE_DIR }}\"" >> .config
         
         # 优化编译参数（不影响兼容性）
         sed -i '/CONFIG_EXTRA_OPTIMIZATION/d' .config
@@ -194,18 +194,13 @@ jobs:
         cd openwrt
         make defconfig
         
-        # ✅ 关键：通过DL_DIR环境变量告诉OpenWrt使用我们的缓存目录
-        # 这是官方推荐的方法，完全避免了软链接被破坏的问题
+        # 通过DL_DIR环境变量告诉OpenWrt使用我们的缓存目录
         make download -j8 DL_DIR=${{ env.DL_DIR }}
         
-        # 现在dl目录是我们的缓存目录，不会被删除
+        # 清理无效文件和旧文件
         echo "下载目录大小："
         du -sh ${{ env.DL_DIR }}
-        
-        # 列出和删除小于1024字节的无效文件
-        find ${{ env.DL_DIR }} -size -1024c -exec ls -l {} \;
         find ${{ env.DL_DIR }} -size -1024c -exec rm -f {} \;
-        # 清理超过30天的旧文件
         find ${{ env.DL_DIR }} -type f -mtime +30 -delete
   
     - name:  编译OpenWrt固件
@@ -214,32 +209,11 @@ jobs:
         cd openwrt
         echo -e "$(nproc) thread compile"
         
-        # 关键：强制使用系统ccache编译所有目标
-        # 所有重试分支都添加ccache参数，确保100%使用缓存
-        make -j$(nproc) \
-          CC="ccache gcc" \
-          CXX="ccache g++" \
-          CPP="ccache gcc -E" \
-          AR="gcc-ar" \
-          RANLIB="gcc-ranlib" \
-          NM="gcc-nm" \
-          DL_DIR=${{ env.DL_DIR }} \
-          || make -j1 \
-            CC="ccache gcc" \
-            CXX="ccache g++" \
-            CPP="ccache gcc -E" \
-            AR="gcc-ar" \
-            RANLIB="gcc-ranlib" \
-            NM="gcc-nm" \
-            DL_DIR=${{ env.DL_DIR }} \
-          || make -j1 V=s \
-            CC="ccache gcc" \
-            CXX="ccache g++" \
-            CPP="ccache gcc -E" \
-            AR="gcc-ar" \
-            RANLIB="gcc-ranlib" \
-            NM="gcc-nm" \
-            DL_DIR=${{ env.DL_DIR }}
+        # ✅ 关键：不再强制覆盖CC/CXX参数，让OpenWrt自己管理工具链编译
+        # 只传递DL_DIR参数，工具链和软件包编译都使用OpenWrt原生逻辑
+        make -j$(nproc) DL_DIR=${{ env.DL_DIR }} \
+          || make -j1 DL_DIR=${{ env.DL_DIR }} \
+          || make -j1 V=s DL_DIR=${{ env.DL_DIR }}
         
         echo "status=success" >> $GITHUB_OUTPUT
         # 提取当前编译的设备型号
