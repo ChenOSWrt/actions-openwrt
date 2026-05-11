@@ -5,7 +5,7 @@
 # Copyright (c) 2026 ChenOSWrt
 #
 
-# 工作流 Workflows 名称
+# 工作流Workflows名称
 name: Build
 
 on:
@@ -173,7 +173,7 @@ jobs:
       if: steps.compile.outputs.status == 'success' && !cancelled() 
       run: df -hT
   
-    - name: 上传完整bin固件到 Actions 页面（需开启）
+    - name: 上传完整bin固件到Actions页面（需开启）
       uses: actions/upload-artifact@v6
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
       with:
@@ -196,7 +196,7 @@ jobs:
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
   
-    - name: 上传轻量固件到 Actions 页面
+    - name: 上传轻量固件到Actions页面
       uses: actions/upload-artifact@v6
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
@@ -213,7 +213,7 @@ jobs:
         echo "release_tag=v1.0.${{ github.run_number }}" >> $GITHUB_OUTPUT
         echo "status=success" >> $GITHUB_OUTPUT
   
-    - name: 发布轻量固件到 Releases 页面
+    - name: 发布轻量固件到Releases页面
       if: steps.tag.outputs.status == 'success' && !cancelled()
       run: |
         gh release upload ${{ steps.tag.outputs.release_tag }} \
@@ -224,7 +224,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
-    - name: 清理旧的 Workflows 运行记录
+    - name: 清理旧的Workflows运行记录
       if: always()
       run: |
         # 保留最新5条运行记录
@@ -239,7 +239,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   
-    - name: 清理旧的 Releases 和 Tags 
+    - name: 清理旧的Releases和Tags
       if: steps.tag.outputs.status == 'success' && !cancelled()
       run: |
         # 保留最新10个版本
