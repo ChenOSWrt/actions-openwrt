@@ -55,7 +55,7 @@ jobs:
       run: |
         SOURCE_NAME=$(basename "$REPO_URL" .git | tr A-Z a-z)
         echo "SOURCE_NAME=$SOURCE_NAME" >> $GITHUB_ENV
-        echo "✅ 识别到源码：$SOURCE_NAME"
+        echo "✅ 识别到源码名称：$SOURCE_NAME"
 
     - name: 初始化编译环境
       env:
