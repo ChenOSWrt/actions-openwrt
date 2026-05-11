@@ -51,12 +51,6 @@ jobs:
     - name: 加载全局变量
       run: grep -v '^#' Part0_Global.env | grep -v '^$' >> $GITHUB_ENV
 
-    - name: 识别源码名称
-      run: |
-        SOURCE_NAME=$(basename "$REPO_URL" .git | tr A-Z a-z)
-        echo "SOURCE_NAME=$SOURCE_NAME" >> $GITHUB_ENV
-        echo "✅ 识别到源码名称：$SOURCE_NAME"
-
     - name: 初始化编译环境
       env:
         DEBIAN_FRONTEND: noninteractive
