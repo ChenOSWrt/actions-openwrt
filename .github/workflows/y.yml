@@ -6,7 +6,7 @@
 #
 
 # 工作流 Workflows 名称
-name: z
+name: y
 
 on:
   # 支持API远程触发
