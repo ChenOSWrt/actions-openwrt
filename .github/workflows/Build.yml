@@ -51,8 +51,7 @@ jobs:
     - name: 加载全局变量
       run: |
         grep -v '^#' Part0_Global.env | grep -v '^$' >> $GITHUB_ENV
-        SOURCE_NAME_RAW=$(basename "$REPO_URL" .git)
-        SOURCE_NAME=$(echo "$SOURCE_NAME_RAW" | sed 's/.*/\u&/')
+        SOURCE_NAME=$(basename "$REPO_URL" .git | tr A-Z a-z)
         echo "SOURCE_NAME=$SOURCE_NAME" >> $GITHUB_ENV
         echo "✅ 全局变量加载完成，识别到源码：$SOURCE_NAME"
 
