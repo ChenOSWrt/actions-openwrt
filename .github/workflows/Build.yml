@@ -25,7 +25,8 @@ jobs:
     outputs:
       devices: ${{ steps.scan.outputs.devices }}
     steps:
-      - uses: actions/checkout@v6
+      - name: 拉取代码到虚拟运行环境
+        uses: actions/checkout@v6
       
       - name: 扫描CONFIGS设备
         id: scan
@@ -44,7 +45,8 @@ jobs:
         matrix:
           device: ${{ fromJson(needs.scan.outputs.devices) }}
     steps:
-    - uses: actions/checkout@v6
+    - name: 拉取代码到虚拟运行环境
+      uses: actions/checkout@v6
 
     - name: 加载全局变量
       run: grep -v '^#' Part0_Global.env | grep -v '^$' >> $GITHUB_ENV
