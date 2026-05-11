@@ -47,14 +47,20 @@ jobs:
     - name: 拉取代码到虚拟运行环境
       uses: actions/checkout@v6
 
-    - name: 加载全局变量并转换为绝对路径
+    # ✅ 第一步：只加载Part0_Global.env中的原始变量
+    - name: 加载全局变量（原始）
       run: |
-        # 加载全局变量
         grep -v '^#' Part0_Global.env | grep -v '^$' >> $GITHUB_ENV
-        
-        # 将相对路径转换为绝对路径
+
+    # ✅ 第二步：转换相对路径为绝对路径（这一步才能看到上一步加载的变量）
+    - name: 转换路径为绝对路径
+      run: |
         echo "CCACHE_DIR=${{ github.workspace }}/${{ env.CCACHE_DIR }}" >> $GITHUB_ENV
         echo "DL_DIR=${{ github.workspace }}/${{ env.DL_DIR }}" >> $GITHUB_ENV
+        
+        # 验证路径是否正确
+        echo "CCACHE_DIR: ${{ env.CCACHE_DIR }}"
+        echo "DL_DIR: ${{ env.DL_DIR }}"
 
     - name: 初始化编译环境
       env:
@@ -151,9 +157,13 @@ jobs:
         # 创建软链接，方便后续调用
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
         
-        # 关键：创建dl目录软链接，使用我们缓存的下载目录
+        # ✅ 关键：创建dl目录软链接（现在DL_DIR已经是正确的绝对路径）
         rm -rf openwrt/dl
         ln -sf ${{ env.DL_DIR }} openwrt/dl
+        
+        # 验证软链接是否正确
+        echo "验证dl软链接："
+        ls -l openwrt/dl
 
     - name: 执行PART1_FEEDS插件源配置文件
       run: |
@@ -190,14 +200,21 @@ jobs:
         cd openwrt
         make defconfig
         make download -j8
-        # 列出和删除小于1024字节的无效文件
-        find dl -size -1024c -exec ls -l {} \;
-        find dl -size -1024c -exec rm -f {} \;
-        # 清理dl目录中超过30天的旧文件，控制大小在1GB以内
-        find dl -type f -mtime +30 -delete
-        # 显示dl目录大小
-        echo "下载目录大小："
-        du -sh dl
+        
+        # ✅ 先检查dl目录是否存在，再执行find命令
+        if [ -d dl ]; then
+          # 列出和删除小于1024字节的无效文件
+          find dl -size -1024c -exec ls -l {} \;
+          find dl -size -1024c -exec rm -f {} \;
+          # 清理dl目录中超过30天的旧文件，控制大小在1GB以内
+          find dl -type f -mtime +30 -delete
+          # 显示dl目录大小
+          echo "下载目录大小："
+          du -sh dl
+        else
+          echo "❌ dl目录不存在！"
+          exit 1
+        fi
   
     - name:  编译OpenWrt固件
       id: compile
@@ -336,7 +353,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     # ==============================================
-    # ✅ 修正后的自动清理旧缓存（语法100%正确）
+    # 自动清理旧缓存
     # ==============================================
     - name: 自动清理旧缓存
       if: always()
