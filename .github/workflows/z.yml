@@ -234,7 +234,7 @@ jobs:
   
     - name: 生成版本号和标签
       id: tag
-      if: env.UPLOAD_FIRMWARE == 'true' && env.UPLOAD_RELEASE == 'true' && !cancelled()
+      if: env.UPLOAD_FIRMWARE == 'true' && env.UPLOAD_RELEASE == 'true'
       run: |
         # 版本号：v1.0.x
         echo "release_tag=v1.0.${{ github.run_number }}" >> $GITHUB_OUTPUT
