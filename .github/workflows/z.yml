@@ -5,20 +5,27 @@
 # Copyright (c) 2026 ChenOSWrt
 #
 
+# 工作流 Workflows 名称
 name: z
 
 on:
+  # 支持API远程触发
   repository_dispatch:
+  # 支持 Actions 页面手动触发
   workflow_dispatch:
 
+# 权限配置
 permissions:
   contents: write
   packages: write
+
 
 jobs:
   global:
     runs-on: ubuntu-22.04
     outputs:
+      
+      # 全局变量输出
       REPO_URL: ${{ steps.load_env.outputs.REPO_URL }}
       REPO_BRANCH: ${{ steps.load_env.outputs.REPO_BRANCH }}
       RELEASE_NOTES: ${{ steps.load_env.outputs.RELEASE_NOTES }}
@@ -30,6 +37,8 @@ jobs:
       USE_CCACHE: ${{ steps.load_env.outputs.USE_CCACHE }}
       CCACHE_DIR: ${{ steps.load_env.outputs.CCACHE_DIR }}
       TZ: ${{ steps.load_env.outputs.TZ }}
+     
+      # 设备列表输出
       devices: ${{ steps.scan.outputs.devices }}
     
     steps:
@@ -73,7 +82,7 @@ build:
     if: (!cancelled())
     run: df -hT
 
-  - name: 上传编译的完整bin固件到 Actions 页面（需开启）
+  - name: 上传完整bin固件到 Actions 页面
     uses: actions/upload-artifact@v6
     if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
     with:
@@ -116,14 +125,15 @@ build:
   - name: 发布轻量固件到 GitHub Releases 页面
     if: steps.tag.outputs.status == 'success' && !cancelled()
     run: |
-      gh release create ${{ steps.tag.outputs.release_tag }} \
-        --title "${{ steps.tag.outputs.release_tag }}" \
-        --notes-file ${{ env.RELEASE_NOTES }} \
-        ${{ env.FIRMWARE }}/*
+      gh release upload ${{ steps.tag.outputs.release_tag }} \
+          ${{ env.FIRMWARE }}/* \
+          --clobber \
+          --title "${{ steps.tag.outputs.release_tag }}" \
+          --notes-file "${{ env.RELEASE_NOTES }}"
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
-  - name: 清理旧的Workflow运行记录
+  - name: 清理旧的 Workflows 运行记录
     if: always()
     run: |
       # 保留最新5条运行记录
@@ -138,7 +148,7 @@ build:
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  - name: 清理旧的Releases版本和Tags标签
+  - name: 清理旧的 Releases 版本和 Tags 标签
     if: steps.tag.outputs.status == 'success' && !cancelled()
     run: |
       # 保留最新10个版本
