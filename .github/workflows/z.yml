@@ -197,7 +197,7 @@ jobs:
         du -sh ${{ env.CCACHE_DIR }}  
     
     - name: 查看磁盘占用
-      if: (!cancelled())
+      if: steps.compile.outputs.status == 'success' && !cancelled() 
       run: df -hT
   
     - name: 上传完整bin固件到 Actions 页面（需开启）
