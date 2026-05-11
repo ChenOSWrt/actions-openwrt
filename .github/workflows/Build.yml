@@ -216,11 +216,13 @@ jobs:
     - name: 发布轻量固件到Releases页面
       if: steps.tag.outputs.status == 'success' && !cancelled()
       run: |
-        gh release upload ${{ steps.tag.outputs.release_tag }} \
-            ${{ env.FIRMWARE }}/* \
-            --clobber \
-            --title "${{ steps.tag.outputs.release_tag }}" \
-            --notes-file "${{ env.RELEASE_NOTES }}"
+        gh release view "${{ steps.tag.outputs.release_tag }}" >/dev/null 2>&1 || \
+        gh release create "${{ steps.tag.outputs.release_tag }}" \
+          --title "${{ steps.tag.outputs.release_tag }}" \
+          --notes-file "${{ env.RELEASE_NOTES }}"
+        gh release upload "${{ steps.tag.outputs.release_tag }}" \
+          ${{ env.FIRMWARE }}/* \
+          --clobber
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
