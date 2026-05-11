@@ -5,7 +5,7 @@
 #
 
 # 工作流Workflows名称
-name: Buildkk
+name: Build
 
 on:
   # 支持API远程触发
@@ -47,20 +47,26 @@ jobs:
     - name: 拉取代码到虚拟运行环境
       uses: actions/checkout@v6
 
-    # ✅ 第一步：只加载Part0_Global.env中的原始变量
-    - name: 加载全局变量（原始）
+    # 第一步：加载全局变量
+    - name: 加载全局变量
       run: |
         grep -v '^#' Part0_Global.env | grep -v '^$' >> $GITHUB_ENV
 
-    # ✅ 第二步：转换相对路径为绝对路径（这一步才能看到上一步加载的变量）
-    - name: 转换路径为绝对路径
+    # 第二步：设置绝对路径
+    - name: 设置绝对路径
       run: |
-        echo "CCACHE_DIR=${{ github.workspace }}/${{ env.CCACHE_DIR }}" >> $GITHUB_ENV
-        echo "DL_DIR=${{ github.workspace }}/${{ env.DL_DIR }}" >> $GITHUB_ENV
+        echo "CCACHE_DIR=${{ github.workspace }}/.ccache" >> $GITHUB_ENV
+        echo "DL_DIR=${{ github.workspace }}/dl" >> $GITHUB_ENV
         
-        # 验证路径是否正确
-        echo "CCACHE_DIR: ${{ env.CCACHE_DIR }}"
-        echo "DL_DIR: ${{ env.DL_DIR }}"
+        # 创建缓存目录
+        mkdir -p ${{ github.workspace }}/.ccache
+        mkdir -p ${{ github.workspace }}/dl
+        
+        # 验证目录
+        echo "CCACHE_DIR: ${{ github.workspace }}/.ccache"
+        echo "DL_DIR: ${{ github.workspace }}/dl"
+        ls -ld ${{ github.workspace }}/.ccache
+        ls -ld ${{ github.workspace }}/dl
 
     - name: 初始化编译环境
       env:
@@ -115,13 +121,9 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-dl-${{ matrix.device }}-
 
-    - name: 配置Ccache环境变量（必须在克隆源码之前）
+    - name: 配置Ccache环境变量
       if: env.USE_CCACHE == 'true'
       run: |
-        # 创建缓存目录
-        mkdir -p ${{ env.CCACHE_DIR }}
-        mkdir -p ${{ env.DL_DIR }}
-        
         # 配置ccache环境变量
         echo "PATH=/usr/lib/ccache:$PATH" >> $GITHUB_ENV
         echo "CCACHE_DIR=${{ env.CCACHE_DIR }}" >> $GITHUB_ENV
@@ -144,7 +146,7 @@ jobs:
         echo "========================================================"
 
     # ==============================================
-    # 以下保留你原有的代码逻辑
+    # 编译流程
     # ==============================================
 
     - name: 克隆OpenWrt源码
@@ -156,14 +158,6 @@ jobs:
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         # 创建软链接，方便后续调用
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
-        
-        # ✅ 关键：创建dl目录软链接（现在DL_DIR已经是正确的绝对路径）
-        rm -rf openwrt/dl
-        ln -sf ${{ env.DL_DIR }} openwrt/dl
-        
-        # 验证软链接是否正确
-        echo "验证dl软链接："
-        ls -l openwrt/dl
 
     - name: 执行PART1_FEEDS插件源配置文件
       run: |
@@ -199,22 +193,20 @@ jobs:
       run: |
         cd openwrt
         make defconfig
-        make download -j8
         
-        # ✅ 先检查dl目录是否存在，再执行find命令
-        if [ -d dl ]; then
-          # 列出和删除小于1024字节的无效文件
-          find dl -size -1024c -exec ls -l {} \;
-          find dl -size -1024c -exec rm -f {} \;
-          # 清理dl目录中超过30天的旧文件，控制大小在1GB以内
-          find dl -type f -mtime +30 -delete
-          # 显示dl目录大小
-          echo "下载目录大小："
-          du -sh dl
-        else
-          echo "❌ dl目录不存在！"
-          exit 1
-        fi
+        # ✅ 关键：通过DL_DIR环境变量告诉OpenWrt使用我们的缓存目录
+        # 这是官方推荐的方法，完全避免了软链接被破坏的问题
+        make download -j8 DL_DIR=${{ env.DL_DIR }}
+        
+        # 现在dl目录是我们的缓存目录，不会被删除
+        echo "下载目录大小："
+        du -sh ${{ env.DL_DIR }}
+        
+        # 列出和删除小于1024字节的无效文件
+        find ${{ env.DL_DIR }} -size -1024c -exec ls -l {} \;
+        find ${{ env.DL_DIR }} -size -1024c -exec rm -f {} \;
+        # 清理超过30天的旧文件
+        find ${{ env.DL_DIR }} -type f -mtime +30 -delete
   
     - name:  编译OpenWrt固件
       id: compile
@@ -231,6 +223,7 @@ jobs:
           AR="gcc-ar" \
           RANLIB="gcc-ranlib" \
           NM="gcc-nm" \
+          DL_DIR=${{ env.DL_DIR }} \
           || make -j1 \
             CC="ccache gcc" \
             CXX="ccache g++" \
@@ -238,13 +231,15 @@ jobs:
             AR="gcc-ar" \
             RANLIB="gcc-ranlib" \
             NM="gcc-nm" \
+            DL_DIR=${{ env.DL_DIR }} \
           || make -j1 V=s \
             CC="ccache gcc" \
             CXX="ccache g++" \
             CPP="ccache gcc -E" \
             AR="gcc-ar" \
             RANLIB="gcc-ranlib" \
-            NM="gcc-nm"
+            NM="gcc-nm" \
+            DL_DIR=${{ env.DL_DIR }}
         
         echo "status=success" >> $GITHUB_OUTPUT
         # 提取当前编译的设备型号
