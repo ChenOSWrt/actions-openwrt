@@ -62,9 +62,9 @@ jobs:
     - name: 清理旧的Workflows运行记录
       if: always()
       run: |
-        # 保留最新5条运行记录
+        # 保留最新3条运行记录
         gh run list --workflow "${{ github.workflow }}" --limit all \
-          --json databaseId -q '.[5:][] | .databaseId' \
+          --json databaseId -q '.[3:][] | .databaseId' \
           | while read -r id; do
               if [ -n "$id" ]; then
                 echo "⚠️ 正在删除运行记录：$id"
