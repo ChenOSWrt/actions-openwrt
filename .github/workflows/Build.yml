@@ -42,7 +42,7 @@ jobs:
     strategy:
         fail-fast: false
         matrix:
-          device: ${{ fromJson(needs.global.outputs.devices) }}
+          device: ${{ fromJson(needs.scan.outputs.devices) }}
     steps:
     - uses: actions/checkout@v6
 
