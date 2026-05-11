@@ -49,7 +49,12 @@ jobs:
       uses: actions/checkout@v6
 
     - name: 加载全局变量
-      run: grep -v '^#' Part0_Global.env | grep -v '^$' >> $GITHUB_ENV
+      run: |
+        grep -v '^#' Part0_Global.env | grep -v '^$' >> $GITHUB_ENV
+        SOURCE_NAME_RAW=$(basename "$REPO_URL" .git)
+        SOURCE_NAME=$(echo "$SOURCE_NAME_RAW" | sed 's/.*/\u&/')
+        echo "SOURCE_NAME=$SOURCE_NAME" >> $GITHUB_ENV
+        echo "✅ 全局变量加载完成，识别到源码：$SOURCE_NAME"
 
     - name: 初始化编译环境
       env:
@@ -181,7 +186,8 @@ jobs:
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
       with:
         # 打包名称
-        name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        name: ${{ env.SOURCE_NAME }}_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        #name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         # 上传路径
         path: openwrt/bin
   
@@ -204,7 +210,8 @@ jobs:
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
         # 固件包名称
-        name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        name: ${{ env.SOURCE_NAME }}_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        #name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         # 固件路径
         path: ${{ env.FIRMWARE }}
   
