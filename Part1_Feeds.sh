@@ -6,9 +6,6 @@
 #
 # Copyright (c) 2026 ChenOSWrt
 #
-# 本项目为免费开源软件，遵循 MIT 开源许可证协议。
-# 详细许可条款请参阅仓库内 LICENSE 文件。
-#
 
 # 清空原有软件源配置（彻底清空）
 > feeds.conf.default
