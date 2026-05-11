@@ -23,7 +23,7 @@ jobs:
   global:
     runs-on: ubuntu-22.04
     outputs:
-      
+
       # 全局变量输出
       REPO_URL: ${{ steps.load_env.outputs.REPO_URL }}
       REPO_BRANCH: ${{ steps.load_env.outputs.REPO_BRANCH }}
@@ -71,7 +71,19 @@ jobs:
         fail-fast: false
         matrix:
           device: ${{ fromJson(needs.global.outputs.devices) }}
-          
+    env:
+      REPO_URL: ${{ needs.global.outputs.REPO_URL }}
+      REPO_BRANCH: ${{ needs.global.outputs.REPO_BRANCH }}
+      RELEASE_NOTES: ${{ needs.global.outputs.RELEASE_NOTES }}
+      PART1_FEEDS: ${{ needs.global.outputs.PART1_FEEDS }}
+      PART2_CUSTOM: ${{ needs.global.outputs.PART2_CUSTOM }}
+      UPLOAD_BIN_DIR: ${{ needs.global.outputs.UPLOAD_BIN_DIR }}
+      UPLOAD_FIRMWARE: ${{ needs.global.outputs.UPLOAD_FIRMWARE }}
+      UPLOAD_RELEASE: ${{ needs.global.outputs.UPLOAD_RELEASE }}
+      USE_CCACHE: ${{ needs.global.outputs.USE_CCACHE }}
+      CCACHE_DIR: ${{ needs.global.outputs.CCACHE_DIR }}
+      TZ: ${{ needs.global.outputs.TZ }} # 重点修复这里！
+            
     steps:
     - name: 拉取代码到虚拟运行环境
       uses: actions/checkout@v6
