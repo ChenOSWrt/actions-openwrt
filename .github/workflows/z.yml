@@ -1,12 +1,12 @@
 #
-# 文件路径：.github/workflows/lede_Build.yml
+# 文件路径：.github/workflows/Build.yml
 # 文件说明：手动编译固件
 #
 # Copyright (c) 2026 ChenOSWrt
 #
 
 # 工作流 Workflows 名称
-name: z
+name: Build
 
 on:
   # 支持API远程触发
