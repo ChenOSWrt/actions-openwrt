@@ -52,7 +52,7 @@ jobs:
         # 加载全局变量
         grep -v '^#' Part0_Global.env | grep -v '^$' >> $GITHUB_ENV
         
-        # ✅ 关键：将相对路径转换为绝对路径（解决.env文件不能用${{ }}的问题）
+        # 将相对路径转换为绝对路径
         echo "CCACHE_DIR=${{ github.workspace }}/${{ env.CCACHE_DIR }}" >> $GITHUB_ENV
         echo "DL_DIR=${{ github.workspace }}/${{ env.DL_DIR }}" >> $GITHUB_ENV
 
@@ -96,9 +96,7 @@ jobs:
       uses: actions/cache@v5
       with:
         path: ${{ env.CCACHE_DIR }}
-        # 缓存键：包含配置文件哈希，确保配置变化时自动重建
         key: ${{ runner.os }}-ccache-${{ matrix.device }}-${{ hashFiles('configs/${{ matrix.device }}.config') }}-${{ github.run_number }}
-        # 恢复键：只保留两级，减少无效缓存搜索
         restore-keys: |
           ${{ runner.os }}-ccache-${{ matrix.device }}-${{ hashFiles('configs/${{ matrix.device }}.config') }}-
           ${{ runner.os }}-ccache-${{ matrix.device }}-
@@ -338,37 +336,35 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     # ==============================================
-    # ✅ 修正后的自动清理旧缓存
+    # ✅ 修正后的自动清理旧缓存（语法100%正确）
     # ==============================================
     - name: 自动清理旧缓存
       if: always()
       run: |
         echo "==================== 清理旧缓存 ===================="
-        # 只保留每个设备最新的2个ccache缓存
-        for device in ${{ join(matrix.device, ' ') }}; do
-          echo "清理设备 $device 的旧ccache缓存..."
-          gh cache list --key "ccache-$device-*" --sort created_at --order desc \
-            --json id,key,createdAt --jq '.[2:][] | .id' \
-            | while read -r id; do
-                if [ -n "$id" ]; then
-                  echo "删除缓存: $id"
-                  gh cache delete "$id" || echo "删除失败: $id"
-                fi
-              done
-        done
+        DEVICE="${{ matrix.device }}"
         
-        # 只保留每个设备最新的1个dl缓存
-        for device in ${{ join(matrix.device, ' ') }}; do
-          echo "清理设备 $device 的旧dl缓存..."
-          gh cache list --key "dl-$device-*" --sort created_at --order desc \
-            --json id,key,createdAt --jq '.[1:][] | .id' \
-            | while read -r id; do
-                if [ -n "$id" ]; then
-                  echo "删除缓存: $id"
-                  gh cache delete "$id" || echo "删除失败: $id"
-                fi
-              done
-        done
+        # 只保留当前设备最新的2个ccache缓存
+        echo "清理设备 $DEVICE 的旧ccache缓存..."
+        gh cache list --key "ccache-$DEVICE-*" --sort created_at --order desc \
+          --json id,key,createdAt --jq '.[2:][] | .id' \
+          | while read -r id; do
+              if [ -n "$id" ]; then
+                echo "删除缓存: $id"
+                gh cache delete "$id" || echo "删除失败: $id"
+              fi
+            done
+        
+        # 只保留当前设备最新的1个dl缓存
+        echo "清理设备 $DEVICE 的旧dl缓存..."
+        gh cache list --key "dl-$DEVICE-*" --sort created_at --order desc \
+          --json id,key,createdAt --jq '.[1:][] | .id' \
+          | while read -r id; do
+              if [ -n "$id" ]; then
+                echo "删除缓存: $id"
+                gh cache delete "$id" || echo "删除失败: $id"
+              fi
+            done
         
         echo "缓存清理完成！"
         echo "当前缓存列表："
