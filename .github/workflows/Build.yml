@@ -210,7 +210,7 @@ jobs:
       if: env.UPLOAD_FIRMWARE == 'true' && env.UPLOAD_RELEASE == 'true'
       run: |
         # 版本号：v1.0.x
-        echo "release_tag=v1.0.${{ github.run_number }}" >> $GITHUB_OUTPUT
+        echo "release_tag=v1.1.${{ github.run_number }}" >> $GITHUB_OUTPUT
         echo "status=success" >> $GITHUB_OUTPUT
   
     - name: 发布轻量固件到Releases页面
