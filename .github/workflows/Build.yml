@@ -139,7 +139,6 @@ jobs:
         ccache -z  
     
     - name: 下载编译所需源码包
-      id: package
       run: |
         cd openwrt
         make defconfig
