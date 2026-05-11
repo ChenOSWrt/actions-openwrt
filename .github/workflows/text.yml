@@ -5,7 +5,7 @@
 #
 
 # 工作流Workflows名称
-name: Buildkk
+name: Build
 
 on:
   # 支持API远程触发
@@ -47,8 +47,14 @@ jobs:
     - name: 拉取代码到虚拟运行环境
       uses: actions/checkout@v6
 
-    - name: 加载全局变量
-      run: grep -v '^#' Part0_Global.env | grep -v '^$' >> $GITHUB_ENV
+    - name: 加载全局变量并转换为绝对路径
+      run: |
+        # 加载全局变量
+        grep -v '^#' Part0_Global.env | grep -v '^$' >> $GITHUB_ENV
+        
+        # ✅ 关键：将相对路径转换为绝对路径（解决.env文件不能用${{ }}的问题）
+        echo "CCACHE_DIR=${{ github.workspace }}/${{ env.CCACHE_DIR }}" >> $GITHUB_ENV
+        echo "DL_DIR=${{ github.workspace }}/${{ env.DL_DIR }}" >> $GITHUB_ENV
 
     - name: 初始化编译环境
       env:
@@ -82,7 +88,7 @@ jobs:
         sudo chown $USER:$GROUPS /workdir
 
     # ==============================================
-    # ✅ 缓存部分：严格控制在 9GB 以内
+    # 缓存部分：严格控制在 9GB 以内
     # ==============================================
     
     - name: 恢复Ccache编译缓存（最大 8GB）
@@ -332,7 +338,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     # ==============================================
-    # 自动清理旧缓存：防止超过10GB限制
+    # ✅ 修正后的自动清理旧缓存
     # ==============================================
     - name: 自动清理旧缓存
       if: always()
@@ -341,7 +347,7 @@ jobs:
         # 只保留每个设备最新的2个ccache缓存
         for device in ${{ join(matrix.device, ' ') }}; do
           echo "清理设备 $device 的旧ccache缓存..."
-          gh cache list --key "ccache-$device-*" --sort created_at --direction desc \
+          gh cache list --key "ccache-$device-*" --sort created_at --order desc \
             --json id,key,createdAt --jq '.[2:][] | .id' \
             | while read -r id; do
                 if [ -n "$id" ]; then
@@ -354,7 +360,7 @@ jobs:
         # 只保留每个设备最新的1个dl缓存
         for device in ${{ join(matrix.device, ' ') }}; do
           echo "清理设备 $device 的旧dl缓存..."
-          gh cache list --key "dl-$device-*" --sort created_at --direction desc \
+          gh cache list --key "dl-$device-*" --sort created_at --order desc \
             --json id,key,createdAt --jq '.[1:][] | .id' \
             | while read -r id; do
                 if [ -n "$id" ]; then
@@ -366,6 +372,6 @@ jobs:
         
         echo "缓存清理完成！"
         echo "当前缓存列表："
-        gh cache list --sort size_in_bytes --direction desc
+        gh cache list --sort size_in_bytes --order desc
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
