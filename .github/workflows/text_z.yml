@@ -86,8 +86,8 @@ jobs:
       run: |
         CCACHE_DIR="${{ github.workspace }}/.ccache"
         echo "CCACHE_DIR=$CCACHE_DIR" >> $GITHUB_ENV
-        mkdir -p ${{ env.CCACHE_DIR }}
-        touch ${{ env.CCACHE_DIR }}/.keep
+        mkdir -p $CCACHE_DIR
+        touch $CCACHE_DIR/.keep
         echo "✅ Ccache缓存目录已创建：$CCACHE_DIR"
   
     - name: 恢复Ccache编译缓存
