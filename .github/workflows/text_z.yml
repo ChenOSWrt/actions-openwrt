@@ -206,18 +206,18 @@ jobs:
       run: |
         # 先检查并创建目录
         mkdir -p openwrt/.ccache
-        mkdir -p ${{ env.CCACHE_DIR }}
-        
-        # ✅ 把OpenWrt内置缓存复制到工作区保存
-        cp -a openwrt/.ccache/* ${{ env.CCACHE_DIR }}/ 2>/dev/null || true
-        
+        mkdir -p ${{ github.workspace }}/.ccache
+    
+        # 把OpenWrt内置缓存复制到工作区保存
+        cp -a openwrt/.ccache/* ${{ github.workspace }}/.ccache/ 2>/dev/null || true
+    
         echo "==================== 最终保存的缓存统计 ===================="
-        export CCACHE_DIR=${{ env.CCACHE_DIR }}
+        export CCACHE_DIR=${{ github.workspace }}/.ccache
         ccache -s
         echo "========================================================"
         echo "最终缓存目录大小："
-        du -sh ${{ env.CCACHE_DIR }}
-    
+        du -sh ${{ github.workspace }}/.ccache
+
     - name: 查看磁盘占用
       if: steps.compile.outputs.status == 'success' && !cancelled() 
       run: df -hT
