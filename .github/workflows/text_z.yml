@@ -95,9 +95,9 @@ jobs:
       uses: actions/cache@v5
       with:
         path: ${{ github.workspace }}/.ccache
-        key: ${{ runner.os }}-ccache-${{ matrix.device }}-v1
+        key: ${{ runner.os }}-ccache-${{ matrix.device }}-v1-${{ github.run_id }}
         restore-keys: |
-          ${{ runner.os }}-ccache-${{ matrix.device }}-
+          ${{ runner.os }}-ccache-${{ matrix.device }}-v1-
   
     - name: 克隆OpenWrt源码
       working-directory: /workdir
