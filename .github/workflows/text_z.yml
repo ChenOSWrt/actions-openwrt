@@ -48,7 +48,7 @@ jobs:
       uses: actions/checkout@v6
 
     - name: 加载全局变量
-      run: grep -v '^#' Part0_Global.env | grep -v '^$' >> $GITHUB_ENV
+      run: grep -v '^#' Part3_Global.env | grep -v '^$' >> $GITHUB_ENV
 
     - name: 初始化编译环境
       env:
