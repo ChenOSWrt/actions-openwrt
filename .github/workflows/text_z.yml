@@ -105,6 +105,13 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-dl-${{ matrix.device }}-
 
+    - name: 把缓存放入源码目录
+      if: env.USE_CCACHE == 'true'
+      run: |
+        mkdir -p openwrt/.ccache
+        mkdir -p ${{ github.workspace }}/.ccache
+        cp -a ${{ github.workspace }}/.ccache/* openwrt/.ccache/ 2>/dev/null || true
+
     # ==============================================
     # 编译流程
     # ==============================================
