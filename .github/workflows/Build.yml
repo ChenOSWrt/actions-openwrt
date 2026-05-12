@@ -176,9 +176,9 @@ jobs:
       if: steps.compile.outputs.status == 'success' && !cancelled() 
       run: df -hT
   
-    - name: 上传完整bin固件到Actions页面（需开启）
+    - name: 上传bin目录完整压缩包到Actions页面（需开启）
       uses: actions/upload-artifact@v6
-      if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
+      if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true' && !cancelled() 
       with:
         # 打包名称
         name: ${{ env.SOURCE_NAME }}_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
@@ -186,9 +186,9 @@ jobs:
         # 上传路径
         path: openwrt/bin
   
-    - name: 整理bin固件成轻量固件
+    - name: 精简bin目录，保留核心固件
       id: organize
-      if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
+      if: steps.compile.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
         cd openwrt/bin/targets/*/*
         # 保留.img、.img.gz文件
@@ -200,7 +200,7 @@ jobs:
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
   
-    - name: 上传轻量固件到Actions页面
+    - name: 上传核心固件到Actions页面
       uses: actions/upload-artifact@v6
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
@@ -212,7 +212,7 @@ jobs:
   
     - name: 生成版本号和标签
       id: tag
-      if: env.UPLOAD_FIRMWARE == 'true' && env.UPLOAD_RELEASE == 'true'
+      if: env.UPLOAD_FIRMWARE == 'true' && env.UPLOAD_RELEASE == 'true' && !cancelled()
       run: |
         # 版本号：v1.0.x
         echo "release_tag=v1.1.${{ github.run_number }}" >> $GITHUB_OUTPUT
