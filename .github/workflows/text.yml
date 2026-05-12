@@ -81,7 +81,17 @@ jobs:
         sudo mkdir -p /workdir
         # 赋予工作目录权限
         sudo chown $USER:$GROUPS /workdir
-  
+
+    - name: 克隆OpenWrt源码
+      working-directory: /workdir
+      run: |
+        # 查看当前磁盘空间
+        df -hT $PWD
+        # 拉取指定仓库和分支的源码
+        git clone $REPO_URL -b $REPO_BRANCH openwrt
+        # 创建软链接，方便后续调用
+        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+
     - name: 创建Ccache缓存目录
       if: env.USE_CCACHE == 'true'
       run: |
@@ -106,15 +116,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-ccache-${{ matrix.device }}-
   
-    - name: 克隆OpenWrt源码
-      working-directory: /workdir
-      run: |
-        # 查看当前磁盘空间
-        df -hT $PWD
-        # 拉取指定仓库和分支的源码
-        git clone $REPO_URL -b $REPO_BRANCH openwrt
-        # 创建软链接，方便后续调用
-        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+   
   
     - name: 执行PART1_FEEDS插件源配置文件
       run: |
