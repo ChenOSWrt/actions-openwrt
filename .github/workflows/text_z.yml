@@ -5,7 +5,7 @@
 #
 
 # 工作流Workflows名称
-name: Buildtt_Z
+name: Buuuuu
 
 on:
   # 支持API远程触发
@@ -47,10 +47,8 @@ jobs:
     - name: 拉取代码到虚拟运行环境
       uses: actions/checkout@v6
 
-    # 第一步：加载全局变量
     - name: 加载全局变量
-      run: |
-        grep -v '^#' Part0_Global.env | grep -v '^$' >> $GITHUB_ENV
+      run: grep -v '^#' Part0_Global.env | grep -v '^$' >> $GITHUB_ENV
 
     - name: 初始化编译环境
       env:
@@ -82,40 +80,22 @@ jobs:
         sudo mkdir -p /workdir
         # 赋予工作目录权限
         sudo chown $USER:$GROUPS /workdir
-
-    # ==============================================
-    # 缓存部分：只有2个缓存，简单明了
-    # ==============================================
-    
+  
+    - name: 创建Ccache缓存目录
+      if: env.USE_CCACHE == 'true'
+      run: |
+        mkdir -p ${{ env.CCACHE_DIR }}
+        touch ${{ env.CCACHE_DIR }}/.keep
+  
     - name: 恢复Ccache编译缓存
       if: env.USE_CCACHE == 'true'
       uses: actions/cache@v5
       with:
-        path: ${{ github.workspace }}/.ccache
-        key: ${{ runner.os }}-ccache-${{ matrix.device }}-${{ hashFiles('configs/${{ matrix.device }}.config') }}-${{ github.run_number }}
+        path: ${{ env.CCACHE_DIR }}
+        key: ${{ runner.os }}-ccache-${{ matrix.device }}-v1
         restore-keys: |
-          ${{ runner.os }}-ccache-${{ matrix.device }}-${{ hashFiles('configs/${{ matrix.device }}.config') }}-
           ${{ runner.os }}-ccache-${{ matrix.device }}-
-
-    - name: 恢复源码下载目录缓存
-      uses: actions/cache@v5
-      with:
-        path: ${{ github.workspace }}/dl
-        key: ${{ runner.os }}-dl-${{ matrix.device }}-${{ hashFiles('configs/${{ matrix.device }}.config') }}
-        restore-keys: |
-          ${{ runner.os }}-dl-${{ matrix.device }}-
-
-    - name: 把缓存放入源码目录
-      if: env.USE_CCACHE == 'true'
-      run: |
-        mkdir -p openwrt/.ccache
-        mkdir -p ${{ github.workspace }}/.ccache
-        cp -a ${{ github.workspace }}/.ccache/* openwrt/.ccache/ 2>/dev/null || true
-
-    # ==============================================
-    # 编译流程
-    # ==============================================
-
+  
     - name: 克隆OpenWrt源码
       working-directory: /workdir
       run: |
@@ -125,7 +105,7 @@ jobs:
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         # 创建软链接，方便后续调用
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
-
+  
     - name: 执行PART1_FEEDS插件源配置文件
       run: |
         chmod +x $PART1_FEEDS
@@ -146,39 +126,56 @@ jobs:
         chmod +x $PART2_CUSTOM
         cd openwrt
         
-        # 启用OpenWrt内置ccache（最简单最可靠）
-        sed -i '/CONFIG_CCACHE/d' .config
+        # 先执行你的自定义脚本
+        $GITHUB_WORKSPACE/$PART2_CUSTOM
+        
+        # 生成最终配置
+        make defconfig
+        
+        # ✅ 核心：defconfig之后强制启用OpenWrt内置CCACHE（100%生效）
+        # 这行是唯一能防止被覆盖的方法
+        sed -i '/CONFIG_CCACHE/d; /CONFIG_USE_CCACHE/d' .config
         echo "CONFIG_CCACHE=y" >> .config
+        echo "CONFIG_USE_CCACHE=y" >> .config
+        
+        # 验证配置（运行时会显示在日志里）
+        echo "==================== OpenWrt 内置 CCACHE 配置 ===================="
+        grep CCACHE .config
+        echo "========================================================"
         
         # 优化编译参数
         sed -i '/CONFIG_EXTRA_OPTIMIZATION/d' .config
         echo "CONFIG_EXTRA_OPTIMIZATION="-O2 -pipe"" >> .config
         
-        $GITHUB_WORKSPACE/$PART2_CUSTOM
+    - name: 配置Ccache环境变量
+      if: env.USE_CCACHE == 'true'
+      run: |
+        # ✅ 保留你原始的系统级CCACHE配置（缓存工具链）
+        echo "PATH=/usr/lib/ccache:$PATH" >> $GITHUB_ENV
+        echo "CCACHE_MAXSIZE=10G" >> $GITHUB_ENV
         
+        # 重置统计
+        ccache -z
+        
+        echo "==================== 系统级 CCACHE 配置 ===================="
+        ccache --version
+        echo "========================================================"
+    
     - name: 下载编译所需源码包
       run: |
         cd openwrt
-        make defconfig
-        make download -j8 DL_DIR=${{ github.workspace }}/dl
-        
-        # 清理无效文件
-        find ${{ github.workspace }}/dl -size -1024c -exec rm -f {} \;
-        find ${{ github.workspace }}/dl -type f -mtime +30 -delete
-        echo "下载目录大小："
-        du -sh ${{ github.workspace }}/dl
+        make download -j8
+        # 列出和删除小于1024字节的无效文件
+        find dl -size -1024c -exec ls -l {} \;
+        find dl -size -1024c -exec rm -f {} \;
   
     - name:  编译OpenWrt固件
       id: compile
       run: |
         cd openwrt
         echo -e "$(nproc) thread compile"
-        
-        # 编译时指定DL_DIR，其他什么都不用改
-        make -j$(nproc) DL_DIR=${{ github.workspace }}/dl \
-          || make -j1 DL_DIR=${{ github.workspace }}/dl \
-          || make -j1 V=s DL_DIR=${{ github.workspace }}/dl
-        
+        # 多线程编译，失败降级单线程重试，最后带日志排查
+        make -j$(nproc) || make -j1 || make -j1 V=s
         echo "status=success" >> $GITHUB_OUTPUT
         # 提取当前编译的设备型号
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
@@ -187,27 +184,36 @@ jobs:
         # 生成时间戳写入环境变量
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
     
-    # ✅ 最终修正版保存Ccache缓存步骤（兼容所有ccache版本）
+    - name: 查看Ccache缓存状态
+      if: env.USE_CCACHE == 'true'
+      run: |
+        echo "==================== 系统级 CCACHE 统计 ===================="
+        ccache -s
+        echo "========================================================"
+        
+        echo "==================== OpenWrt 内置 CCACHE 统计 ===================="
+        ccache -s --ccache-dir openwrt/.ccache 2>/dev/null || echo "OpenWrt 内置 ccache 未启用"
+        echo "========================================================"
+        
+        echo "OpenWrt 内置缓存目录大小："
+        du -sh openwrt/.ccache 2>/dev/null || echo "目录不存在"
+    
     - name: 保存Ccache缓存
       if: env.USE_CCACHE == 'true'
       run: |
         # 先检查并创建目录
         mkdir -p openwrt/.ccache
-        mkdir -p ${{ github.workspace }}/.ccache
+        mkdir -p ${{ env.CCACHE_DIR }}
         
-        # 复制缓存，即使目录为空也不会报错
-        cp -a openwrt/.ccache/* ${{ github.workspace }}/.ccache/ 2>/dev/null || true
+        # ✅ 把OpenWrt内置缓存复制到工作区保存
+        cp -a openwrt/.ccache/* ${{ env.CCACHE_DIR }}/ 2>/dev/null || true
         
-        # 使用环境变量指定缓存目录（所有版本都支持）
-        export CCACHE_DIR=${{ github.workspace }}/.ccache
-        
-        echo "==================== Ccache 编译统计 ===================="
+        echo "==================== 最终保存的缓存统计 ===================="
+        export CCACHE_DIR=${{ env.CCACHE_DIR }}
         ccache -s
         echo "========================================================"
-        echo "Ccache缓存目录大小："
-        du -sh ${{ github.workspace }}/.ccache
-        # 清理超过7天未使用的缓存
-        ccache --evict-older-than 7d
+        echo "最终缓存目录大小："
+        du -sh ${{ env.CCACHE_DIR }}
     
     - name: 查看磁盘占用
       if: steps.compile.outputs.status == 'success' && !cancelled() 
@@ -249,7 +255,7 @@ jobs:
       id: tag
       if: env.UPLOAD_FIRMWARE == 'true' && env.UPLOAD_RELEASE == 'true'
       run: |
-        # 版本号：v1.0.x
+        # 版本号：v1.1.x
         echo "release_tag=v1.1.${{ github.run_number }}" >> $GITHUB_OUTPUT
         echo "status=success" >> $GITHUB_OUTPUT
   
@@ -266,11 +272,6 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
-    # ==============================================
-    # 以下两个步骤也可以根据你的需求选择删除
-    # ==============================================
-    
-    # 如果你不需要自动删除旧的Actions运行记录，可以删掉这个步骤
     - name: 清理旧的Workflows运行记录
       if: always()
       run: |
@@ -286,7 +287,6 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   
-    # 如果你不需要自动删除旧的Releases版本，可以删掉这个步骤
     - name: 清理旧的Releases和Tags
       if: steps.tag.outputs.status == 'success' && !cancelled()
       run: |
