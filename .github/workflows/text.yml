@@ -171,7 +171,9 @@ jobs:
         echo "缓存状态"
         ccache -s
         echo "缓存目录大小"
-        du -sh openwrt/.ccache  
+        du -sh openwrt/.ccache
+        du -sh openwrt/dl
+        du -sh openwrt/staging_dir
     
     - name: 查看磁盘占用
       if: steps.compile.outputs.status == 'success' && !cancelled() 
