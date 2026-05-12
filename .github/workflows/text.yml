@@ -86,10 +86,10 @@ jobs:
       if: env.USE_CCACHE == 'true'
       run: |
         mkdir -p openwrt/.ccache
-        mkdir -p openwrt/.dl
+        mkdir -p openwrt/dl
         mkdir -p openwrt/staging_dir
         touch openwrt/.ccache/.gitkeep
-        touch openwrt/.dl/.gitkeep
+        touch openwrt/dl/.gitkeep
         touch openwrt/staging_dir/.gitkeep
         
   
@@ -98,9 +98,9 @@ jobs:
       uses: actions/cache@v5
       with:
         path: |
-          openwrt/.dl
+          openwrt/dl
           openwrt/.ccache
-          openwrt/.staging_dir
+          openwrt/staging_dir
           
         key: ${{ runner.os }}-ccache-${{ matrix.device }}-v98
         restore-keys: |
@@ -147,6 +147,7 @@ jobs:
         # 列出和删除小于1024字节的无效文件
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
+        du -sh opwnert/dl
   
     - name:  编译OpenWrt固件
       id: compile
