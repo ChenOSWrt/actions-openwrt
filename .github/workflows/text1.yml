@@ -145,7 +145,7 @@ jobs:
         echo "========================================================"
 
     # ==============================================
-    # 编译流程
+    # 编译流程：分阶段编译
     # ==============================================
 
     - name: 克隆OpenWrt源码
@@ -178,7 +178,7 @@ jobs:
         chmod +x $PART2_CUSTOM
         cd openwrt
         
-        # ✅ 关键：强制禁用OpenWrt内置ccache
+        # 强制禁用OpenWrt内置ccache
         sed -i '/CONFIG_CCACHE/d' .config
         echo "CONFIG_CCACHE=n" >> .config
         
@@ -202,25 +202,36 @@ jobs:
         find ${{ env.DL_DIR }} -size -1024c -exec rm -f {} \;
         find ${{ env.DL_DIR }} -type f -mtime +30 -delete
   
-    - name:  编译OpenWrt固件
+    # ✅ 第一阶段：只编译工具链（使用原生gcc，绝对不会出错）
+    - name: 编译工具链（第一阶段）
+      run: |
+        cd openwrt
+        echo -e "$(nproc) thread compile toolchain"
+        make toolchain/install -j$(nproc) DL_DIR=${{ env.DL_DIR }} \
+          || make toolchain/install -j1 DL_DIR=${{ env.DL_DIR }} \
+          || make toolchain/install -j1 V=s DL_DIR=${{ env.DL_DIR }}
+        
+        echo "✅ 工具链编译完成！"
+    
+    # ✅ 第二阶段：编译所有软件包和固件（使用ccache加速）
+    - name:  编译固件（第二阶段，ccache加速）
       id: compile
       run: |
         cd openwrt
-        echo -e "$(nproc) thread compile"
+        echo -e "$(nproc) thread compile firmware"
         
-        # ✅ 终极解决方案：只加速软件包编译，不影响工具链
-        # TARGET_CC/TARGET_CXX 只会影响目标软件包，不会影响工具链编译
+        # 只有这一步使用ccache，只加速软件包编译
         make -j$(nproc) \
-          TARGET_CC="ccache gcc" \
-          TARGET_CXX="ccache g++" \
+          TARGET_CC="ccache $(pwd)/staging_dir/toolchain-aarch64_generic_gcc-13.3.0_musl/bin/aarch64-openwrt-linux-gcc" \
+          TARGET_CXX="ccache $(pwd)/staging_dir/toolchain-aarch64_generic_gcc-13.3.0_musl/bin/aarch64-openwrt-linux-g++" \
           DL_DIR=${{ env.DL_DIR }} \
           || make -j1 \
-            TARGET_CC="ccache gcc" \
-            TARGET_CXX="ccache g++" \
+            TARGET_CC="ccache $(pwd)/staging_dir/toolchain-aarch64_generic_gcc-13.3.0_musl/bin/aarch64-openwrt-linux-gcc" \
+            TARGET_CXX="ccache $(pwd)/staging_dir/toolchain-aarch64_generic_gcc-13.3.0_musl/bin/aarch64-openwrt-linux-g++" \
             DL_DIR=${{ env.DL_DIR }} \
           || make -j1 V=s \
-            TARGET_CC="ccache gcc" \
-            TARGET_CXX="ccache g++" \
+            TARGET_CC="ccache $(pwd)/staging_dir/toolchain-aarch64_generic_gcc-13.3.0_musl/bin/aarch64-openwrt-linux-gcc" \
+            TARGET_CXX="ccache $(pwd)/staging_dir/toolchain-aarch64_generic_gcc-13.3.0_musl/bin/aarch64-openwrt-linux-g++" \
             DL_DIR=${{ env.DL_DIR }}
         
         echo "status=success" >> $GITHUB_OUTPUT
