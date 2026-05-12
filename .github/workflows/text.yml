@@ -1,3 +1,4 @@
+#
 # 文件路径：.github/workflows/Build.yml
 # 文件说明：手动编译固件
 #
@@ -5,7 +6,7 @@
 #
 
 # 工作流Workflows名称
-name: Buildkk
+name: Build
 
 on:
   # 支持API远程触发
@@ -47,26 +48,8 @@ jobs:
     - name: 拉取代码到虚拟运行环境
       uses: actions/checkout@v6
 
-    # 第一步：加载全局变量
     - name: 加载全局变量
-      run: |
-        grep -v '^#' Part0_Global.env | grep -v '^$' >> $GITHUB_ENV
-
-    # 第二步：设置绝对路径
-    - name: 设置绝对路径
-      run: |
-        echo "CCACHE_DIR=${{ github.workspace }}/.ccache" >> $GITHUB_ENV
-        echo "DL_DIR=${{ github.workspace }}/dl" >> $GITHUB_ENV
-        
-        # 创建缓存目录
-        mkdir -p ${{ github.workspace }}/.ccache
-        mkdir -p ${{ github.workspace }}/dl
-        
-        # 验证目录
-        echo "CCACHE_DIR: ${{ github.workspace }}/.ccache"
-        echo "DL_DIR: ${{ github.workspace }}/dl"
-        ls -ld ${{ github.workspace }}/.ccache
-        ls -ld ${{ github.workspace }}/dl
+      run: grep -v '^#' Part0_Global.env | grep -v '^$' >> $GITHUB_ENV
 
     - name: 初始化编译环境
       env:
@@ -78,7 +61,7 @@ jobs:
         sudo docker image prune --all --force
         # 更新软件源
         sudo -E apt-get -qq update
-        # 安装编译依赖（已包含ccache）
+        # 安装编译依赖
         sudo -E apt-get -qq install \
         ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
         bzip2 ccache clang cmake cpio curl device-tree-compiler ecj fastjar flex gawk gettext gcc-multilib \
@@ -98,56 +81,31 @@ jobs:
         sudo mkdir -p /workdir
         # 赋予工作目录权限
         sudo chown $USER:$GROUPS /workdir
-
-    # ==============================================
-    # 缓存部分：严格控制在 9GB 以内
-    # ==============================================
-    
-    - name: 恢复Ccache编译缓存（最大 8GB）
-      if: env.USE_CCACHE == 'true'
-      uses: actions/cache@v5
-      with:
-        path: ${{ env.CCACHE_DIR }}
-        key: ${{ runner.os }}-ccache-${{ matrix.device }}-${{ hashFiles('configs/${{ matrix.device }}.config') }}-${{ github.run_number }}
-        restore-keys: |
-          ${{ runner.os }}-ccache-${{ matrix.device }}-${{ hashFiles('configs/${{ matrix.device }}.config') }}-
-          ${{ runner.os }}-ccache-${{ matrix.device }}-
-
-    - name: 恢复源码下载目录缓存（最大 1GB）
-      uses: actions/cache@v5
-      with:
-        path: ${{ env.DL_DIR }}
-        key: ${{ runner.os }}-dl-${{ matrix.device }}-${{ hashFiles('configs/${{ matrix.device }}.config') }}
-        restore-keys: |
-          ${{ runner.os }}-dl-${{ matrix.device }}-
-
-    - name: 配置Ccache环境变量
+  
+    - name: 创建Ccache缓存目录
       if: env.USE_CCACHE == 'true'
       run: |
-        # 配置ccache环境变量
-        echo "CCACHE_DIR=${{ env.CCACHE_DIR }}" >> $GITHUB_ENV
-        echo "CCACHE_MAXSIZE=${{ env.CCACHE_MAXSIZE }}" >> $GITHUB_ENV
-        echo "CCACHE_COMPRESS=${{ env.CCACHE_COMPRESS }}" >> $GITHUB_ENV
-        echo "CCACHE_COMPRESSLEVEL=${{ env.CCACHE_COMPRESSLEVEL }}" >> $GITHUB_ENV
-        echo "CCACHE_DIRECT=${{ env.CCACHE_DIRECT }}" >> $GITHUB_ENV
-        echo "CCACHE_DEPEND=${{ env.CCACHE_DEPEND }}" >> $GITHUB_ENV
-        echo "CCACHE_NOHASHDIR=${{ env.CCACHE_NOHASHDIR }}" >> $GITHUB_ENV
-        echo "CCACHE_FILECLONE=${{ env.CCACHE_FILECLONE }}" >> $GITHUB_ENV
+        mkdir -p openwrt/.ccache
+        mkdir -p openwrt/.dl
+        mkdir -p openwrt/staging_dir
+        touch openwrt/.ccache/.gitkeep
+        touch openwrt/.dl/.gitkeep
+        touch openwrt/staging_dir/.gitkeep
         
-        # 重置ccache统计
-        ccache -z
-        
-        # 验证ccache配置
-        echo "==================== Ccache 配置验证 ===================="
-        ccache --version
-        echo "--------------------------------------------------------"
-        ccache -p
-        echo "========================================================"
-
-    # ==============================================
-    # 编译流程
-    # ==============================================
-
+  
+    - name: 首次编译生成Ccache缓存（后续编译云端加载）
+      if: env.USE_CCACHE == 'true'
+      uses: actions/cache@v5
+      with:
+        path: |
+          openwrt/.dl
+          openwrt/.ccache
+          openwrt/.staging_dir
+          
+        key: ${{ runner.os }}-ccache-${{ matrix.device }}-v98
+        restore-keys: |
+          ${{ runner.os }}-ccache-${{ matrix.device }}-
+  
     - name: 克隆OpenWrt源码
       working-directory: /workdir
       run: |
@@ -157,7 +115,7 @@ jobs:
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         # 创建软链接，方便后续调用
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
-
+  
     - name: 执行PART1_FEEDS插件源配置文件
       run: |
         chmod +x $PART1_FEEDS
@@ -177,44 +135,26 @@ jobs:
         cp configs/${{ matrix.device }}.config openwrt/.config
         chmod +x $PART2_CUSTOM
         cd openwrt
-        
-        # ✅ 关键：启用OpenWrt内置ccache，并指定我们的缓存目录
-        sed -i '/CONFIG_CCACHE/d' .config
+        # 开启OpenWrt的Ccache编译缓存功能
         echo "CONFIG_CCACHE=y" >> .config
-        echo "CONFIG_CCACHE_DIR=\"${{ env.CCACHE_DIR }}\"" >> .config
-        
-        # 优化编译参数（不影响兼容性）
-        sed -i '/CONFIG_EXTRA_OPTIMIZATION/d' .config
-        echo "CONFIG_EXTRA_OPTIMIZATION="-O2 -pipe"" >> .config
-        
         $GITHUB_WORKSPACE/$PART2_CUSTOM
         
     - name: 下载编译所需源码包
       run: |
         cd openwrt
         make defconfig
-        
-        # 通过DL_DIR环境变量告诉OpenWrt使用我们的缓存目录
-        make download -j8 DL_DIR=${{ env.DL_DIR }}
-        
-        # 清理无效文件和旧文件
-        echo "下载目录大小："
-        du -sh ${{ env.DL_DIR }}
-        find ${{ env.DL_DIR }} -size -1024c -exec rm -f {} \;
-        find ${{ env.DL_DIR }} -type f -mtime +30 -delete
+        make download -j8
+        # 列出和删除小于1024字节的无效文件
+        find dl -size -1024c -exec ls -l {} \;
+        find dl -size -1024c -exec rm -f {} \;
   
     - name:  编译OpenWrt固件
       id: compile
       run: |
         cd openwrt
         echo -e "$(nproc) thread compile"
-        
-        # ✅ 关键：不再强制覆盖CC/CXX参数，让OpenWrt自己管理工具链编译
-        # 只传递DL_DIR参数，工具链和软件包编译都使用OpenWrt原生逻辑
-        make -j$(nproc) DL_DIR=${{ env.DL_DIR }} \
-          || make -j1 DL_DIR=${{ env.DL_DIR }} \
-          || make -j1 V=s DL_DIR=${{ env.DL_DIR }}
-        
+        # 多线程编译，失败降级单线程重试，最后带日志排查
+        make -j$(nproc) || make -j1 || make -j1 V=s
         echo "status=success" >> $GITHUB_OUTPUT
         # 提取当前编译的设备型号
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
@@ -226,15 +166,12 @@ jobs:
     - name: 查看Ccache缓存状态
       if: env.USE_CCACHE == 'true'
       run: |
-        echo "==================== Ccache 编译统计 ===================="
+        echo "缓存版本"
+        ccache --version
+        echo "缓存状态"
         ccache -s
-        echo "========================================================"
-        echo "Ccache缓存目录大小："
-        du -sh ${{ env.CCACHE_DIR }}
-        echo "源码下载目录大小："
-        du -sh ${{ env.DL_DIR }}
-        # 清理ccache中超过7天未使用的缓存
-        ccache --evict-older-than 7d
+        echo "缓存目录大小"
+        du -sh ${{ env.CCACHE_DIR }}  
     
     - name: 查看磁盘占用
       if: steps.compile.outputs.status == 'success' && !cancelled() 
@@ -246,6 +183,7 @@ jobs:
       with:
         # 打包名称
         name: ${{ env.SOURCE_NAME }}_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        #name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         # 上传路径
         path: openwrt/bin
   
@@ -269,6 +207,7 @@ jobs:
       with:
         # 固件包名称
         name: ${{ env.SOURCE_NAME }}_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        #name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         # 固件路径
         path: ${{ env.FIRMWARE }}
   
@@ -318,42 +257,5 @@ jobs:
           gh release delete "$tag" --yes
           git push origin --delete "$tag"
         done
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    # ==============================================
-    # 自动清理旧缓存
-    # ==============================================
-    - name: 自动清理旧缓存
-      if: always()
-      run: |
-        echo "==================== 清理旧缓存 ===================="
-        DEVICE="${{ matrix.device }}"
-        
-        # 只保留当前设备最新的2个ccache缓存
-        echo "清理设备 $DEVICE 的旧ccache缓存..."
-        gh cache list --key "ccache-$DEVICE-*" --sort created_at --order desc \
-          --json id,key,createdAt --jq '.[2:][] | .id' \
-          | while read -r id; do
-              if [ -n "$id" ]; then
-                echo "删除缓存: $id"
-                gh cache delete "$id" || echo "删除失败: $id"
-              fi
-            done
-        
-        # 只保留当前设备最新的1个dl缓存
-        echo "清理设备 $DEVICE 的旧dl缓存..."
-        gh cache list --key "dl-$DEVICE-*" --sort created_at --order desc \
-          --json id,key,createdAt --jq '.[1:][] | .id' \
-          | while read -r id; do
-              if [ -n "$id" ]; then
-                echo "删除缓存: $id"
-                gh cache delete "$id" || echo "删除失败: $id"
-              fi
-            done
-        
-        echo "缓存清理完成！"
-        echo "当前缓存列表："
-        gh cache list --sort size_in_bytes --order desc
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
