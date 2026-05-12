@@ -95,12 +95,9 @@ jobs:
     - name: 创建Ccache缓存目录
       if: env.USE_CCACHE == 'true'
       run: |
-        mkdir -p openwrt/.ccache
-        mkdir -p openwrt/dl
-        mkdir -p openwrt/staging_dir
-        touch openwrt/.ccache/.gitkeep
-        touch openwrt/dl/.gitkeep
-        touch openwrt/staging_dir/.gitkeep
+        cd openwrt
+        mkdir -p .ccache dl staging_dir
+        touch .ccache/.gitkeep dl/.gitkeep staging_dir/.gitkeep
         
   
     - name: 首次编译生成Ccache缓存（后续编译云端加载）
@@ -149,7 +146,7 @@ jobs:
         # 列出和删除小于1024字节的无效文件
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
-        du -sh openwrt/dl
+        du -sh dl
   
     - name:  编译OpenWrt固件
       id: compile
