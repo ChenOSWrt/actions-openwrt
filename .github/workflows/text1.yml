@@ -5,7 +5,7 @@
 #
 
 # 工作流Workflows名称
-name: Buildkk2
+name: Buildtt
 
 on:
   # 支持API远程触发
@@ -47,6 +47,7 @@ jobs:
     - name: 拉取代码到虚拟运行环境
       uses: actions/checkout@v6
 
+    # 第一步：加载全局变量
     - name: 加载全局变量
       run: |
         grep -v '^#' Part0_Global.env | grep -v '^$' >> $GITHUB_ENV
@@ -83,7 +84,7 @@ jobs:
         sudo chown $USER:$GROUPS /workdir
 
     # ==============================================
-    # 缓存部分：最简单的配置
+    # 缓存部分：只有2个缓存，简单明了
     # ==============================================
     
     - name: 恢复Ccache编译缓存
@@ -105,14 +106,17 @@ jobs:
           ${{ runner.os }}-dl-${{ matrix.device }}-
 
     # ==============================================
-    # 编译流程：和你原来的几乎一样
+    # 编译流程：和你原来的代码几乎一模一样
     # ==============================================
 
     - name: 克隆OpenWrt源码
       working-directory: /workdir
       run: |
+        # 查看当前磁盘空间
         df -hT $PWD
+        # 拉取指定仓库和分支的源码
         git clone $REPO_URL -b $REPO_BRANCH openwrt
+        # 创建软链接，方便后续调用
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
     - name: 执行PART1_FEEDS插件源配置文件
@@ -130,13 +134,18 @@ jobs:
     - name: 执行PART2_CUSTOM自定义配置文件
       run: |
         [ -e files ] && mv files openwrt/files
+        # 加载Configs对应设备的编译配置
         cp configs/${{ matrix.device }}.config openwrt/.config
         chmod +x $PART2_CUSTOM
         cd openwrt
         
-        # ✅ 关键1：启用OpenWrt内置ccache
+        # ✅ 第一行修改：启用OpenWrt内置ccache（最简单最可靠）
         sed -i '/CONFIG_CCACHE/d' .config
         echo "CONFIG_CCACHE=y" >> .config
+        
+        # 优化编译参数
+        sed -i '/CONFIG_EXTRA_OPTIMIZATION/d' .config
+        echo "CONFIG_EXTRA_OPTIMIZATION="-O2 -pipe"" >> .config
         
         $GITHUB_WORKSPACE/$PART2_CUSTOM
         
@@ -144,41 +153,47 @@ jobs:
       run: |
         cd openwrt
         make defconfig
+        make download -j8 DL_DIR=${{ github.workspace }}/dl
         
-        # ✅ 关键2：在make defconfig之后，创建dl目录软链接
-        rm -rf dl
-        ln -sf ${{ github.workspace }}/dl dl
-        
-        make download -j8
-        find dl -size -1024c -exec rm -f {} \;
+        # 清理无效文件
+        find ${{ github.workspace }}/dl -size -1024c -exec rm -f {} \;
+        find ${{ github.workspace }}/dl -type f -mtime +30 -delete
+        echo "下载目录大小："
+        du -sh ${{ github.workspace }}/dl
   
     - name:  编译OpenWrt固件
       id: compile
       run: |
         cd openwrt
-        
-        # ✅ 关键3：在make之前，创建ccache目录软链接
-        rm -rf .ccache
-        ln -sf ${{ github.workspace }}/.ccache .ccache
-        
         echo -e "$(nproc) thread compile"
-        make -j$(nproc) || make -j1 || make -j1 V=s
+        
+        # ✅ 第二行修改：编译时指定DL_DIR，其他什么都不用改
+        make -j$(nproc) DL_DIR=${{ github.workspace }}/dl \
+          || make -j1 DL_DIR=${{ github.workspace }}/dl \
+          || make -j1 V=s DL_DIR=${{ github.workspace }}/dl
         
         echo "status=success" >> $GITHUB_OUTPUT
+        # 提取当前编译的设备型号
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
+        # 设备名写入环境变量
         [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
+        # 生成时间戳写入环境变量
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
     
-    - name: 查看Ccache缓存状态
+    # ✅ 第三行修改：编译结束后，把OpenWrt内置的ccache缓存复制到我们的外部目录
+    - name: 保存Ccache缓存
       if: env.USE_CCACHE == 'true'
       run: |
+        # 把OpenWrt源码目录下的.ccache复制到我们的缓存目录
+        cp -a openwrt/.ccache/* ${{ github.workspace }}/.ccache/
+        
         echo "==================== Ccache 编译统计 ===================="
-        ccache -s ${{ github.workspace }}/.ccache
+        ccache -s --ccache-dir ${{ github.workspace }}/.ccache
         echo "========================================================"
         echo "Ccache缓存目录大小："
         du -sh ${{ github.workspace }}/.ccache
-        echo "源码下载目录大小："
-        du -sh ${{ github.workspace }}/dl
+        # 清理超过7天未使用的缓存
+        ccache --evict-older-than 7d --ccache-dir ${{ github.workspace }}/.ccache
     
     - name: 查看磁盘占用
       if: steps.compile.outputs.status == 'success' && !cancelled() 
@@ -188,7 +203,9 @@ jobs:
       uses: actions/upload-artifact@v6
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
       with:
+        # 打包名称
         name: ${{ env.SOURCE_NAME }}_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        # 上传路径
         path: openwrt/bin
   
     - name: 整理bin固件成轻量固件
@@ -196,10 +213,12 @@ jobs:
       if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
         cd openwrt/bin/targets/*/*
+        # 保留.img、.img.gz文件
         find . -type f ! -name '*.img' ! -name '*.img.gz' -delete
         rm -rf packages
         echo "✅ 最终保留的文件："
         ls -lh
+        # 固件路径写入环境变量
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
   
@@ -207,13 +226,16 @@ jobs:
       uses: actions/upload-artifact@v6
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
+        # 固件包名称
         name: ${{ env.SOURCE_NAME }}_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        # 固件路径
         path: ${{ env.FIRMWARE }}
   
     - name: 生成版本号和标签
       id: tag
       if: env.UPLOAD_FIRMWARE == 'true' && env.UPLOAD_RELEASE == 'true'
       run: |
+        # 版本号：v1.0.x
         echo "release_tag=v1.1.${{ github.run_number }}" >> $GITHUB_OUTPUT
         echo "status=success" >> $GITHUB_OUTPUT
   
@@ -233,6 +255,7 @@ jobs:
     - name: 清理旧的Workflows运行记录
       if: always()
       run: |
+        # 保留最新5条运行记录
         gh run list --workflow "${{ github.workflow }}" --limit all \
           --json databaseId -q '.[5:][] | .databaseId' \
           | while read -r id; do
@@ -247,6 +270,7 @@ jobs:
     - name: 清理旧的Releases和Tags
       if: steps.tag.outputs.status == 'success' && !cancelled()
       run: |
+        # 保留最新10个版本
         TAGS=$(gh release list --json tagName --jq '.[10:][] | .tagName')
         for tag in $TAGS; do
           echo "⚠️ 正在删除: $tag"
@@ -256,12 +280,16 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+    # ==============================================
+    # 自动清理旧缓存
+    # ==============================================
     - name: 自动清理旧缓存
       if: always()
       run: |
         echo "==================== 清理旧缓存 ===================="
         DEVICE="${{ matrix.device }}"
         
+        # 只保留当前设备最新的2个ccache缓存
         echo "清理设备 $DEVICE 的旧ccache缓存..."
         gh cache list --key "ccache-$DEVICE-*" --sort created_at --order desc \
           --json id,key,createdAt --jq '.[2:][] | .id' \
@@ -272,6 +300,7 @@ jobs:
               fi
             done
         
+        # 只保留当前设备最新的1个dl缓存
         echo "清理设备 $DEVICE 的旧dl缓存..."
         gh cache list --key "dl-$DEVICE-*" --sort created_at --order desc \
           --json id,key,createdAt --jq '.[1:][] | .id' \
