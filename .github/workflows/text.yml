@@ -171,7 +171,7 @@ jobs:
         echo "缓存状态"
         ccache -s
         echo "缓存目录大小"
-        du -sh openwrt/.ccache
+        du -sh openwrt/ccache
         du -sh openwrt/dl
         du -sh openwrt/staging_dir
     
