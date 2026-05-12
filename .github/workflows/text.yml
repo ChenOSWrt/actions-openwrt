@@ -147,7 +147,7 @@ jobs:
         # 列出和删除小于1024字节的无效文件
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
-        du -sh opwnert/dl
+        du -sh openwrt/dl
   
     - name:  编译OpenWrt固件
       id: compile
