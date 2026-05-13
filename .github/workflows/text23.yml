@@ -68,6 +68,13 @@ jobs:
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
 
+    - name: 克隆OpenWrt源码
+      working-directory: /workdir
+      run: |
+        df -hT $PWD
+        git clone $REPO_URL -b $REPO_BRANCH openwrt
+        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+
     - name: 恢复Ccache编译缓存
       if: env.USE_CCACHE == 'true'
       uses: actions/cache@v5
@@ -76,13 +83,6 @@ jobs:
         key: ${{ runner.os }}-ccache-${{ matrix.device }}-v1
         restore-keys: |
           ${{ runner.os }}-ccache-${{ matrix.device }}-
-
-    - name: 克隆OpenWrt源码
-      working-directory: /workdir
-      run: |
-        df -hT $PWD
-        git clone $REPO_URL -b $REPO_BRANCH openwrt
-        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
     - name: 执行PART1_FEEDS插件源配置
       run: |
