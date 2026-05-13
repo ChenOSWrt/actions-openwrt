@@ -100,7 +100,7 @@ jobs:
           ${{ env.CCACHE_DIR }}
           ${{ env.DL_DIR }}
           ${{ env.STAGING_DIR }}
-        key: ${{ runner.os }}-ccache-${{ matrix.device }}-v2
+        key: ${{ runner.os }}-ccache-${{ matrix.device }}-v8
         restore-keys: |
           ${{ runner.os }}-ccache-${{ matrix.device }}-
   
