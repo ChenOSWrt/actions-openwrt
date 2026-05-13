@@ -99,7 +99,7 @@ jobs:
         path: |
           ${{ env.CCACHE_DIR }}
           ${{ env.DL_DIR }}
-        key: ${{ runner.os }}-ccache-${{ matrix.device }}-v1
+        key: ${{ runner.os }}-ccache-${{ matrix.device }}-v2
         restore-keys: |
           ${{ runner.os }}-ccache-${{ matrix.device }}-
   
