@@ -92,13 +92,13 @@ jobs:
         # 创建软链接，方便后续调用
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
-    - name: 恢复Ccache编译缓存
+    - name: 恢复编译缓存
       if: env.USE_CCACHE == 'true'
       uses: actions/cache@v5
       with:
         path: |
-          /workdir/openwrt/.ccache
-          /workdir/openwrt/dl
+          ${{ env.CCACHE_DIR }}
+          ${{ env.DL_DIR }}
         key: ${{ runner.os }}-ccache-${{ matrix.device }}-v1
         restore-keys: |
           ${{ runner.os }}-ccache-${{ matrix.device }}-
@@ -122,26 +122,17 @@ jobs:
         cp configs/${{ matrix.device }}.config openwrt/.config
         chmod +x $PART2_CUSTOM
         cd openwrt
+        make defconfig
         $GITHUB_WORKSPACE/$PART2_CUSTOM
+        sed -i '/CONFIG_CCACHE/d' .config
+        echo "CONFIG_CCACHE=y" >> .config
+        echo "CONFIG_CCACHE_DIR=\"\"" >> .config
+        echo "验证开关是否打开..."
+        grep CCACHE .config
         
-    - name: 配置Ccache环境变量
-      if: env.USE_CCACHE == 'true'
-      run: |
-        echo "PATH=/usr/lib/ccache:$PATH" >> $GITHUB_ENV
-        echo "CCACHE_DIR=${{ env.CCACHE_DIR }}" >> $GITHUB_ENV
-        echo "CCACHE_MAXSIZE=10G" >> $GITHUB_ENV
-        ccache -z  
-    
     - name: 下载编译所需源码包
       run: |
         cd openwrt
-        make defconfig
-        # 打开Ccache开关之一
-        sed -i '/CONFIG_CCACHE/d' .config
-        echo "CONFIG_CCACHE=y" >> .config
-        echo "验证开关是否打开..."
-        grep CCACHE .config
-        echo "--------------------"
         make download -j8
         # 列出和删除小于1024字节的无效文件
         find dl -size -1024c -exec ls -l {} \;
@@ -162,15 +153,16 @@ jobs:
         # 生成时间戳写入环境变量
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
     
-    - name: 查看Ccache缓存状态
+    - name: 查看缓存状态
       if: env.USE_CCACHE == 'true'
       run: |
         echo "缓存版本"
         ccache --version
-        echo "缓存状态"
+        echo "缓存统计"
         ccache -s
         echo "缓存目录大小"
-        du -sh ${{ env.CCACHE_DIR }}  
+        du -sh ${{ env.CCACHE_DIR }}
+        du -sh ${{ env.DL_DIR }}
     
     - name: 查看磁盘占用
       if: steps.compile.outputs.status == 'success' && !cancelled() 
