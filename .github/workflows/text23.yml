@@ -145,10 +145,11 @@ jobs:
     - name: 查看Ccache状态
       if: env.USE_CCACHE == 'true'
       run: |
-        echo "==================== CCACHE 统计 ===================="
-        ccache -s --ccache-dir /workdir/openwrt/.ccache
-        echo "====================================================="
         du -sh /workdir/openwrt/.ccache
+        echo "==================== CCACHE 统计 ===================="
+        CCACHE_DIR=/workdir/openwrt/.ccache ccache -s
+        echo "====================================================="
+        
 
     - name: 查看磁盘占用
       if: steps.compile.outputs.status == 'success' && !cancelled() 
