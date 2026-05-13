@@ -155,6 +155,7 @@ jobs:
         
         sed -i '/CONFIG_CCACHE/d' .config
         echo "CONFIG_CCACHE=y" >> .config
+        echo "CONFIG_CCACHE_DIR=\"\"" >> .config
         echo "验证配置..."
         grep CCACHE .config
         
