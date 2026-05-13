@@ -131,10 +131,12 @@ jobs:
         sed -i '/CONFIG_CCACHE/d' .config
         echo "CONFIG_CCACHE=y" >> .config
         echo "CONFIG_CCACHE_DIR=\"${{ env.CCACHE_DIR }}\"" >> .config
+        echo "CONFIG_DL=y" >> .config
         echo "CONFIG_DL_DIR=\"${{ env.DL_DIR }}\"" >> .config
+        echo "CONFIG_STAGING=y" >> .config
         echo "CONFIG_STAGING_DIR=\"${{ env.STAGING_DIR }}\"" >> .config
         echo "验证配置..."
-        grep -E 'CCACHE|DL_DIR|STAGING_DIR' .config
+        grep -E 'CCACHE|DL|STAGING' .config
         
     - name: 下载编译所需源码包
       run: |
