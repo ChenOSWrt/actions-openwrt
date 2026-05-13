@@ -1,0 +1,219 @@
+# 文件路径：.github/workflows/Build.yml
+# 文件说明：手动编译固件
+#
+# Copyright (c) 2026 ChenOSWrt
+#
+
+name: zuihouyic
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-22.04
+    outputs:
+      devices: ${{ steps.scan.outputs.devices }}
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v6
+      
+      - name: 扫描CONFIGS设备
+        id: scan
+        run: |
+          [ -d configs ] || { echo "❌ 无configs目录" && exit 1; }
+          list=$(ls configs/*.config 2>/dev/null | xargs -r basename -s .config)
+          [ -z "$list" ] && { echo "❌ 没有找到.config文件，终止编译！" && exit 1; }
+          echo devices=$(echo "$list" | jq -R . | jq -cs .) >> $GITHUB_OUTPUT
+          echo "✅ 扫描到的设备：$list"
+
+  build:
+    needs: scan
+    runs-on: ubuntu-22.04
+    strategy:
+        fail-fast: false
+        matrix:
+          device: ${{ fromJson(needs.scan.outputs.devices) }}
+    steps:
+    - name: 拉取代码
+      uses: actions/checkout@v6
+
+    - name: 加载全局变量
+      run: grep -v '^#' Part3_Global.env | grep -v '^$' >> $GITHUB_ENV
+
+    - name: 初始化编译环境
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+        sudo docker image prune --all --force
+        sudo -E apt-get -qq update
+        sudo -E apt-get -qq install \
+        ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
+        bzip2 ccache clang cmake cpio curl device-tree-compiler ecj fastjar flex gawk gettext gcc-multilib \
+        g++-multilib git gnutls-dev gperf haveged help2man intltool lib32gcc-s1 libc6-dev-i386 libelf-dev \
+        libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses-dev libpython3-dev \
+        libreadline-dev libssl-dev libtool libyaml-dev libz-dev lld llvm lrzsz mkisofs msmtp nano \
+        ninja-build p7zip p7zip-full patch pkgconf python3 python3-pip python3-ply python3-docutils \
+        python3-pyelftools qemu-utils re2c rsync scons squashfs-tools subversion swig texinfo uglifyjs \
+        upx-ucl unzip vim wget xmlto xxd zlib1g-dev zstd
+        sudo -E apt-get -qq autoremove --purge
+        sudo -E apt-get -qq clean
+        sudo timedatectl set-timezone "$TZ"
+        sudo mkdir -p /workdir
+        sudo chown $USER:$GROUPS /workdir
+
+    - name: 恢复Ccache编译缓存
+      if: env.USE_CCACHE == 'true'
+      uses: actions/cache@v5
+      with:
+        path: /workdir/openwrt/.ccache
+        key: ${{ runner.os }}-ccache-${{ matrix.device }}-v1
+        restore-keys: |
+          ${{ runner.os }}-ccache-${{ matrix.device }}-
+
+    - name: 克隆OpenWrt源码
+      working-directory: /workdir
+      run: |
+        df -hT $PWD
+        git clone $REPO_URL -b $REPO_BRANCH openwrt
+        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+
+    - name: 执行PART1_FEEDS插件源配置
+      run: |
+        chmod +x $PART1_FEEDS
+        cd openwrt
+        $GITHUB_WORKSPACE/$PART1_FEEDS
+    
+    - name: 更新并安装插件源
+      run: |
+        cd openwrt
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
+
+    - name: 执行PART2_CUSTOM自定义配置
+      run: |
+        [ -e files ] && mv files openwrt/files
+        cp configs/${{ matrix.device }}.config openwrt/.config
+        chmod +x $PART2_CUSTOM
+        cd openwrt
+        
+        # ========== ✅ 正确 Ccache 配置（只需要这两行）==========
+        sed -i '/CONFIG_CCACHE/d' .config
+        echo "CONFIG_CCACHE=y" >> .config
+        echo "CONFIG_CCACHE_DIR=\"\"" >> .config
+        # ======================================================
+        
+        $GITHUB_WORKSPACE/$PART2_CUSTOM
+        make defconfig
+        
+        # 双重保险
+        sed -i '/CONFIG_CCACHE/d' .config
+        echo "CONFIG_CCACHE=y" >> .config
+        echo "CONFIG_CCACHE_DIR=\"\"" >> .config
+        
+        echo "==================== CCACHE 配置 ===================="
+        grep CCACHE .config
+        echo "====================================================="
+        
+        sed -i '/CONFIG_EXTRA_OPTIMIZATION/d' .config
+        echo "CONFIG_EXTRA_OPTIMIZATION=\"-O2 -pipe\"" >> .config
+
+    - name: 下载依赖
+      run: |
+        cd openwrt
+        make download -j8
+        find dl -size -1024c -exec ls -l {} \;
+        find dl -size -1024c -exec rm -f {} \;
+
+    - name: 编译OpenWrt固件
+      id: compile
+      run: |
+        cd openwrt
+        echo -e "$(nproc) thread compile"
+        make -j$(nproc) || make -j1 || make -j1 V=s
+        echo "status=success" >> $GITHUB_OUTPUT
+        grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
+        [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
+        echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+
+    - name: 查看Ccache状态
+      if: env.USE_CCACHE == 'true'
+      run: |
+        echo "==================== CCACHE 统计 ===================="
+        ccache -s --ccache-dir /workdir/openwrt/.ccache
+        echo "====================================================="
+        du -sh /workdir/openwrt/.ccache
+
+    - name: 查看磁盘占用
+      if: steps.compile.outputs.status == 'success' && !cancelled() 
+      run: df -hT
+
+    - name: 上传完整bin固件
+      uses: actions/upload-artifact@v6
+      if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
+      with:
+        name: ${{ env.SOURCE_NAME }}_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        path: openwrt/bin
+
+    - name: 整理轻量固件
+      id: organize
+      if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
+      run: |
+        cd openwrt/bin/targets/*/*
+        find . -type f ! -name '*.img' ! -name '*.img.gz' -delete
+        rm -rf packages
+        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+        echo "status=success" >> $GITHUB_OUTPUT
+
+    - name: 上传轻量固件
+      uses: actions/upload-artifact@v6
+      if: steps.organize.outputs.status == 'success' && !cancelled()
+      with:
+        name: ${{ env.SOURCE_NAME }}_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        path: ${{ env.FIRMWARE }}
+
+    - name: 生成版本号
+      id: tag
+      if: env.UPLOAD_FIRMWARE == 'true' && env.UPLOAD_RELEASE == 'true'
+      run: |
+        echo "release_tag=v1.1.${{ github.run_number }}" >> $GITHUB_OUTPUT
+        echo "status=success" >> $GITHUB_OUTPUT
+
+    - name: 发布到Releases
+      if: steps.tag.outputs.status == 'success' && !cancelled()
+      run: |
+        gh release view "${{ steps.tag.outputs.release_tag }}" >/dev/null 2>&1 || \
+        gh release create "${{ steps.tag.outputs.release_tag }}" --title "${{ steps.tag.outputs.release_tag }}" --notes-file "${{ env.RELEASE_NOTES }}"
+        gh release upload "${{ steps.tag.outputs.release_tag }}" ${{ env.FIRMWARE }}/* --clobber
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+    - name: 清理旧Workflows
+      if: always()
+      run: |
+        gh run list --workflow "${{ github.workflow }}" --limit all --json databaseId -q '.[5:][] | .databaseId' | while read -r id; do
+          if [ -n "$id" ]; then
+            echo "⚠️ 正在删除运行记录：$id"
+            gh run delete "$id" || echo "❌ 删除失败：$id"
+          fi
+        done
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: 清理旧Releases
+      if: steps.tag.outputs.status == 'success' && !cancelled()
+      run: |
+        TAGS=$(gh release list --json tagName --jq '.[10:][] | .tagName')
+        for tag in $TAGS; do
+          echo "⚠️ 正在删除: $tag"
+          gh release delete "$tag" --yes
+          git push origin --delete "$tag"
+        done
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
