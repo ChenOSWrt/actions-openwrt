@@ -96,8 +96,8 @@ jobs:
       if: env.USE_CCACHE == 'true'
       run: |
         cd openwrt
-        mkdir -p ccache dl staging_dir
-        touch ccache/.gitkeep dl/.gitkeep staging_dir/.gitkeep
+        mkdir -p ccache dl
+        touch ccache/.gitkeep dl/.gitkeep
         
   
     - name: 首次编译生成Ccache缓存（后续编译云端加载）
@@ -107,7 +107,6 @@ jobs:
         path: |
           openwrt/dl
           openwrt/ccache
-          openwrt/staging_dir
           
         key: ${{ runner.os }}-ccache-${{ matrix.device }}-v98
         restore-keys: |
