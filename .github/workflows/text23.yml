@@ -121,8 +121,8 @@ jobs:
         grep CCACHE .config
         echo "====================================================="
         
-        sed -i '/CONFIG_EXTRA_OPTIMIZATION/d' .config
-        echo "CONFIG_EXTRA_OPTIMIZATION=\"-O2 -pipe\"" >> .config
+        #sed -i '/CONFIG_EXTRA_OPTIMIZATION/d' .config
+        #echo "CONFIG_EXTRA_OPTIMIZATION=\"-O2 -pipe\"" >> .config
 
     - name: 下载依赖
       run: |
