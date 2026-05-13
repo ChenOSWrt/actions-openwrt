@@ -125,6 +125,7 @@ jobs:
         cp configs/${{ matrix.device }}.config openwrt/.config
         chmod +x $PART2_CUSTOM
         cd openwrt
+        mkdir -p staging_dir/host staging_dir/hostpkg staging_dir/target-*
         make prereq
         make defconfig
         $GITHUB_WORKSPACE/$PART2_CUSTOM
