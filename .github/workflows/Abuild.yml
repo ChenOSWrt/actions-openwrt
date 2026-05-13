@@ -99,7 +99,7 @@ jobs:
         path: |
           ${{ env.CCACHE_DIR }}
           ${{ env.DL_DIR }}
-          /openwrt/staging_dir
+          ${{ env.STAGING_DIR }}
         key: ${{ runner.os }}-ccache-${{ matrix.device }}-v2
         restore-keys: |
           ${{ runner.os }}-ccache-${{ matrix.device }}-
@@ -165,7 +165,7 @@ jobs:
         echo "缓存目录大小"
         du -sh ${{ env.CCACHE_DIR }}
         du -sh ${{ env.DL_DIR }}
-        du -sh /openwrt/staging_dir
+        du -sh ${{ env.STAGING_DIR }}
     
     - name: 查看磁盘占用
       if: steps.compile.outputs.status == 'success' && !cancelled() 
