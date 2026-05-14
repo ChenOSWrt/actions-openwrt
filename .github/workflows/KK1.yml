@@ -87,7 +87,7 @@ jobs:
       uses: actions/cache@v5
       with:
         path: ${{ env.CACHE_SYNC }}
-        key: ${{ runner.os }}-sync-${{ matrix.device }}-v10
+        key: ${{ runner.os }}-sync-${{ matrix.device }}-v11
         restore-keys: |
           ${{ runner.os }}-sync-${{ matrix.device }}-
   
@@ -168,13 +168,14 @@ jobs:
 
         echo "🔧 执行终极时间戳欺骗，强制跳过工具链编译..."
         touch -d "2000-01-01 00:00:00" .config
-        if [ -f "tmp/.config" ]; then
-          touch -d "2000-01-01 00:00:00" tmp/.config
-        fi
+        [ -f "tmp/.config" ] && touch -d "2000-01-01 00:00:00" tmp/.config
+        [ -f "tmp/.build" ] && touch -d "2000-01-01 00:00:00" tmp/.build
+        [ -d "staging_dir/host/stamp" ] && find staging_dir/host/stamp -type f -exec touch {} \;
+        [ -d "build_dir" ] && find build_dir -type f -name ".prepared" -exec touch {} \;
         find staging_dir -type f -name "*.stamp" -exec touch {} \;
+        find staging_dir -type f -name ".prepared" -exec touch {} \;
         find tools -type f -name "*.stamp" -exec touch {} \;
         find toolchain -type f -name "*.stamp" -exec touch {} \;
-        find staging_dir -type f -name ".prepared" -exec touch {} \;
         echo "✅ 所有时间戳修复完成，工具链将被100%复用"
         
         echo -e "$(nproc) thread compile"
@@ -214,7 +215,7 @@ jobs:
       uses: actions/cache/save@v5
       with:
         path: ${{ env.CACHE_SYNC }}
-        key: ${{ runner.os }}-sync-${{ matrix.device }}-v10
+        key: ${{ runner.os }}-sync-${{ matrix.device }}-v11
         
     - name: 查看编译数据
       if: env.USE_CCACHE == 'true'
