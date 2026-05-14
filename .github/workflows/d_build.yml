@@ -48,7 +48,7 @@ jobs:
     - name: 拉取代码到虚拟运行环境
       uses: actions/checkout@v6
 
-    - name: 加载全局变量
+    - name: 加载PART0_GLOBAL全局变量
       run: grep -v '^#' Part0_Global.env | grep -v '^$' >> $GITHUB_ENV
 
     - name: 初始化编译环境
@@ -82,7 +82,7 @@ jobs:
         # 赋予工作目录权限
         sudo chown $USER:$GROUPS /workdir "${{ env.CACHE_SYNC }}"
 
-    - name: 恢复备份数据
+    - name: 恢复编译数据
       if: env.USE_CCACHE == 'true'
       uses: actions/cache@v5
       with:
@@ -101,7 +101,7 @@ jobs:
         # 创建软链接，方便后续调用
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
-    - name: 同步备份数据
+    - name: 同步编译数据
       if: env.USE_CCACHE == 'true'
       run: |
         if [ -n "$(ls -A "${{ env.CACHE_SYNC }}")" ]; then
@@ -116,16 +116,16 @@ jobs:
             rsync -a --delete "${{ env.CACHE_SYNC }}/staging_dir/" /workdir/openwrt/staging_dir/
             echo "✅ staging_dir 同步完成"
           fi
-          if [ -d "${{ env.CACHE_SYNC }}/.ccache" ]; then
+          if [ -d "${{ env.CACHE_SYNC }}/ccache" ]; then
             mkdir -p /workdir/openwrt/.ccache
-            rsync -a --delete "${{ env.CACHE_SYNC }}/.ccache/" /workdir/openwrt/.ccache/
-            echo "✅ .ccache 同步完成"
+            rsync -a --delete "${{ env.CACHE_SYNC }}/ccache/" /workdir/openwrt/.ccache/
+            echo "✅ ccache 同步完成"
           fi
         else
           echo "⚠️ 未找到备份数据，进行全新编译"
         fi
         
-    - name: 执行PART1_FEEDS插件源配置文件
+    - name: 执行PART1_FEEDS配置文件
       run: |
         chmod +x $PART1_FEEDS
         cd openwrt
@@ -137,7 +137,7 @@ jobs:
         ./scripts/feeds update -a
         ./scripts/feeds install -a
   
-    - name: 执行PART2_CUSTOM自定义配置文件
+    - name: 执行PART2_CUSTOM配置文件
       run: |
         [ -e files ] && mv files openwrt/files
         # 加载Configs对应设备的编译配置
@@ -192,9 +192,9 @@ jobs:
           echo "✅ staging_dir 备份完成"
         fi
         if [ -d /workdir/openwrt/.ccache ]; then
-          mkdir -p "${{ env.CACHE_SYNC }}/.ccache"
-          rsync -a --delete /workdir/openwrt/.ccache/ "${{ env.CACHE_SYNC }}/.ccache/"
-          echo "✅ .ccache 备份完成"
+          mkdir -p "${{ env.CACHE_SYNC }}/ccache"
+          rsync -a --delete /workdir/openwrt/.ccache/ "${{ env.CACHE_SYNC }}/ccache/"
+          echo "✅ ccache 备份完成"
         fi
         
     - name: 查看缓存状态
