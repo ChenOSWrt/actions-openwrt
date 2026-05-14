@@ -90,7 +90,6 @@ jobs:
         key: ${{ runner.os }}-sync-${{ matrix.device }}-v10
         restore-keys: |
           ${{ runner.os }}-sync-${{ matrix.device }}-
-        save-always: ${{ env.CACHE_SAVE_ALWAYS }}
   
     - name: 克隆OpenWrt源码
       working-directory: /workdir
@@ -126,7 +125,6 @@ jobs:
           echo "🔧 修复编译环境时间戳，强制复用工具链..."
           touch -d "2000-01-01 00:00:00" /workdir/openwrt/.config
           find /workdir/openwrt/staging_dir -name "*.stamp" -exec touch {} \;
-          find /workdir/openwrt/build_dir -name "*.stamp" -exec touch {} \;
           echo "✅ 时间戳修复完成，工具链将被强制复用"
 
         else
@@ -204,6 +202,13 @@ jobs:
           rsync -a --delete /workdir/openwrt/.ccache/ "${{ env.CACHE_SYNC }}/ccache/"
           echo "✅ ccache 备份完成"
         fi
+
+    - name: 增量编译数据
+      if: env.USE_CCACHE == 'true' && env.CACHE_SAVE_ALWAYS == 'true' && steps.compile.outputs.status == 'success' && !cancelled()
+      uses: actions/cache/save@v5
+      with:
+        path: ${{ env.CACHE_SYNC }}
+        key: ${{ runner.os }}-sync-${{ matrix.device }}-v10
         
     - name: 查看编译数据
       if: env.USE_CCACHE == 'true'
