@@ -166,25 +166,9 @@ jobs:
         cd openwrt
         export SOURCE_DATE_EPOCH=1704067200
     
-        SKIP_TOOLS=""
-        SKIP_TOOLCHAIN=""
-        if [ "$SKIP_TOOLCHAIN_COMPILE" = "auto" ]; then
-          if ls staging_dir/toolchain-* 1>/dev/null 2>&1 && [ -d "staging_dir/host" ]; then
-            echo "✅ 自动模式：检测到工具链，跳过 tools/toolchain 编译"
-            SKIP_TOOLS="tools/install"
-            SKIP_TOOLCHAIN="toolchain/install"
-          else
-            echo "⚠️ 自动模式：未检测到工具链，正常编译"
-          fi
-        elif [ "$SKIP_TOOLCHAIN_COMPILE" = "true" ]; then
-          echo "✅ 强制跳过工具链编译"
-          SKIP_TOOLS="tools/install"
-          SKIP_TOOLCHAIN="toolchain/install"
-        fi
-        
-        echo -e "$(nproc) thread compile"
-        FORCE_UNSAFE_CONFIGURE=1 make -j$(nproc) $SKIP_TOOLS $SKIP_TOOLCHAIN package/compile target/compile package/install target/install package/index || true
-        FORCE_UNSAFE_CONFIGURE=1 make -j$(nproc) world || make -j1 world || make -j1 V=s world
+        mv tools tools.bak && mv toolchain toolchain.bak
+        FORCE_UNSAFE_CONFIGURE=1 make -j$(nproc) || make -j1 || make -j1 V=s
+        mv tools.bak tools && mv toolchain.bak toolchain
        
         echo "status=success" >> $GITHUB_OUTPUT
         # 提取当前编译的设备型号
