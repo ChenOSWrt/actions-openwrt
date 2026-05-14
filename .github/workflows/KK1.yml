@@ -175,7 +175,6 @@ jobs:
         find tools -type f -name "*.stamp" -exec touch {} \;
         find toolchain -type f -name "*.stamp" -exec touch {} \;
         find staging_dir -type f -name ".prepared" -exec touch {} \;
-        find build_dir -type f -name ".prepared" -exec touch {} \;
         echo "✅ 所有时间戳修复完成，工具链将被100%复用"
         
         echo -e "$(nproc) thread compile"
