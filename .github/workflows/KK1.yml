@@ -89,7 +89,7 @@ jobs:
         path: ${{ env.CACHE_SYNC }}
         key: ${{ runner.os }}-sync-${{ matrix.device }}-v11
         restore-keys: |
-          ${{ runner.os }}-sync-${{ matrix.device }}-
+          ${{ runner.os }}-sync-${{ matrix.device }}-v11
   
     - name: 克隆OpenWrt源码
       working-directory: /workdir
