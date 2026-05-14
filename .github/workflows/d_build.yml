@@ -6,7 +6,7 @@
 #
 
 # 工作流Workflows名称
-name: d_build
+name: Build
 
 on:
   # 支持API远程触发
