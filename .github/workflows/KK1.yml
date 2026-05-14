@@ -87,7 +87,7 @@ jobs:
       uses: actions/cache@v5
       with:
         path: ${{ env.CACHE_SYNC }}
-        key: ${{ runner.os }}-sync-${{ matrix.device }}-v11
+        key: ${{ runner.os }}-sync-${{ matrix.device }}-${{ github.run_id }}
         restore-keys: |
           ${{ runner.os }}-sync-${{ matrix.device }}-
   
