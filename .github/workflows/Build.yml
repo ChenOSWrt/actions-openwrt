@@ -197,7 +197,7 @@ jobs:
           echo "✅ ccache 备份完成"
         fi
         
-    - name: 查看缓存状态
+    - name: 查看编译数据
       if: env.USE_CCACHE == 'true'
       run: |
         echo "缓存版本"
@@ -211,7 +211,7 @@ jobs:
       if: steps.compile.outputs.status == 'success' && !cancelled() 
       run: df -hT
   
-    - name: 上传bin目录完整压缩包到Actions页面（需开启）
+    - name: 上传Bin目录到Actions页面
       uses: actions/upload-artifact@v6
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true' && !cancelled() 
       with:
@@ -221,7 +221,7 @@ jobs:
         # 上传路径
         path: openwrt/bin
   
-    - name: 精简bin目录，保留核心固件
+    - name: 精简Bin目录，保留核心固件
       id: organize
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
