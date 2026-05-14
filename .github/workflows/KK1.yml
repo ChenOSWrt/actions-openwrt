@@ -166,19 +166,20 @@ jobs:
         cd openwrt
         export SOURCE_DATE_EPOCH=1704067200
     
-        SKIP_ARGS=""
+        SKIP_TOOLS=""
+        SKIP_TOOLCHAIN=""
         if [ "$SKIP_TOOLCHAIN_COMPILE" = "auto" ]; then
           if ls staging_dir/toolchain-* 1>/dev/null 2>&1 && [ -d "staging_dir/host" ]; then
-            echo "✅ 自动模式：检测到工具链，直接跳过编译"
-            SKIP_ARGS="-o tools/compile -o toolchain/compile"
+            echo "✅ 自动模式：检测到工具链，跳过 tools/toolchain 编译"
+            SKIP_TOOLS="tools/install"
+            SKIP_TOOLCHAIN="toolchain/install"
           else
             echo "⚠️ 自动模式：未检测到工具链，正常编译"
           fi
         elif [ "$SKIP_TOOLCHAIN_COMPILE" = "true" ]; then
-          echo "✅ 手动开启：强制跳过工具链编译"
-          SKIP_ARGS="-o tools/compile -o toolchain/compile"
-        else
-          echo "⚠️ 手动关闭：强制完整编译"
+          echo "✅ 强制跳过工具链编译"
+          SKIP_TOOLS="tools/install"
+          SKIP_TOOLCHAIN="toolchain/install"
         fi
         
         echo -e "$(nproc) thread compile"
