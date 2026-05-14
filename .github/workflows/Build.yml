@@ -90,6 +90,7 @@ jobs:
         key: ${{ runner.os }}-sync-${{ matrix.device }}-v10
         restore-keys: |
           ${{ runner.os }}-sync-${{ matrix.device }}-
+        save-always: ${{ env.CACHE_SAVE_ALWAYS }}
   
     - name: 克隆OpenWrt源码
       working-directory: /workdir
