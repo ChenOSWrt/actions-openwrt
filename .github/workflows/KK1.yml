@@ -121,6 +121,10 @@ jobs:
             rsync -a --delete "${{ env.CACHE_SYNC }}/ccache/" /workdir/openwrt/.ccache/
             echo "✅ ccache 同步完成"
           fi
+          if [ -f "${{ env.CACHE_SYNC }}/tools.hash" ]; then
+            cp "${{ env.CACHE_SYNC }}/tools.hash" /workdir/openwrt/
+            echo "✅ tools.hash 同步完成"
+          fi
         else
           echo "⚠️ 未找到备份数据，进行全新编译"
         fi
@@ -212,6 +216,10 @@ jobs:
           mkdir -p "${{ env.CACHE_SYNC }}/ccache"
           rsync -a --delete /workdir/openwrt/.ccache/ "${{ env.CACHE_SYNC }}/ccache/"
           echo "✅ ccache 备份完成"
+        fi
+        if [ -f "$CACHE_SYNC/tools.hash" ]; then
+          cp "$CACHE_SYNC/tools.hash" "${{ env.CACHE_SYNC }}/"
+          echo "✅ tools.hash 备份完成"
         fi
 
     - name: 查看编译数据
