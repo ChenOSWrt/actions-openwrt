@@ -165,22 +165,27 @@ jobs:
       run: |
         cd openwrt
         export SOURCE_DATE_EPOCH=1704067200
-
-        echo "🔧 执行终极时间戳欺骗，强制跳过工具链编译..."
-        touch -d "2000-01-01 00:00:00" .config
-        [ -f "tmp/.config" ] && touch -d "2000-01-01 00:00:00" tmp/.config
-        [ -f "tmp/.build" ] && touch -d "2000-01-01 00:00:00" tmp/.build
-        [ -d "staging_dir/host/stamp" ] && find staging_dir/host/stamp -type f -exec touch {} \;
-        [ -d "build_dir" ] && find build_dir -type f -name ".prepared" -exec touch {} \;
-        find staging_dir -type f -name "*.stamp" -exec touch {} \;
-        find staging_dir -type f -name ".prepared" -exec touch {} \;
-        find tools -type f -name "*.stamp" -exec touch {} \;
-        find toolchain -type f -name "*.stamp" -exec touch {} \;
-        echo "✅ 所有时间戳修复完成，工具链将被100%复用"
+    
+        SKIP_ARGS=""
+        if [ "$SKIP_TOOLCHAIN_COMPILE" = "auto" ]; then
+          if ls staging_dir/toolchain-* 1>/dev/null 2>&1 && [ -d "staging_dir/host" ]; then
+            echo "✅ 自动模式：检测到工具链，直接跳过编译"
+            SKIP_ARGS="-o tools/compile -o toolchain/compile"
+          else
+            echo "⚠️ 自动模式：未检测到工具链，正常编译"
+          fi
+        elif [ "$SKIP_TOOLCHAIN_COMPILE" = "true" ]; then
+          echo "✅ 手动开启：强制跳过工具链编译"
+          SKIP_ARGS="-o tools/compile -o toolchain/compile"
+        else
+          echo "⚠️ 手动关闭：强制完整编译"
+        fi
         
         echo -e "$(nproc) thread compile"
-        # 多线程编译，失败降级单线程重试，最后带日志排查
-        make -j$(nproc) FORCE_UNSAFE_CONFIGURE=1 || make -j1 FORCE_UNSAFE_CONFIGURE=1 || make -j1 V=s FORCE_UNSAFE_CONFIGURE=1
+        make -j$(nproc) FORCE_UNSAFE_CONFIGURE=1 $SKIP_ARGS \
+        || make -j1 FORCE_UNSAFE_CONFIGURE=1 $SKIP_ARGS \
+        || make -j1 V=s FORCE_UNSAFE_CONFIGURE=1 $SKIP_ARGS
+       
         echo "status=success" >> $GITHUB_OUTPUT
         # 提取当前编译的设备型号
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
@@ -210,13 +215,6 @@ jobs:
           echo "✅ ccache 备份完成"
         fi
 
-    - name: 增量编译数据
-      if: env.USE_CCACHE == 'true' && env.CACHE_SAVE_ALWAYS == 'true' && steps.compile.outputs.status == 'success' && !cancelled()
-      uses: actions/cache/save@v5
-      with:
-        path: ${{ env.CACHE_SYNC }}
-        key: ${{ runner.os }}-sync-${{ matrix.device }}-v11
-        
     - name: 查看编译数据
       if: env.USE_CCACHE == 'true'
       run: |
