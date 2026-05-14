@@ -121,14 +121,6 @@ jobs:
             rsync -a --delete "${{ env.CACHE_SYNC }}/ccache/" /workdir/openwrt/.ccache/
             echo "✅ ccache 同步完成"
           fi
-          
-          echo "🔧 修复编译环境时间戳，强制复用工具链..."
-          touch -d "2000-01-01 00:00:00" /workdir/openwrt/.config
-          find /workdir/openwrt/staging_dir -name "*.stamp" -exec touch {} \;
-          find /workdir/openwrt/tools -type f -name "*.stamp" -exec touch {} \;
-          find /workdir/openwrt/toolchain -type f -name "*.stamp" -exec touch {} \;
-          echo "✅ 时间戳修复完成，工具链将被强制复用"
-
         else
           echo "⚠️ 未找到备份数据，进行全新编译"
         fi
@@ -173,6 +165,19 @@ jobs:
       run: |
         cd openwrt
         export SOURCE_DATE_EPOCH=1704067200
+
+        echo "🔧 执行终极时间戳欺骗，强制跳过工具链编译..."
+        touch -d "2000-01-01 00:00:00" .config
+        if [ -f "tmp/.config" ]; then
+          touch -d "2000-01-01 00:00:00" tmp/.config
+        fi
+        find staging_dir -type f -name "*.stamp" -exec touch {} \;
+        find tools -type f -name "*.stamp" -exec touch {} \;
+        find toolchain -type f -name "*.stamp" -exec touch {} \;
+        find staging_dir -type f -name ".prepared" -exec touch {} \;
+        find build_dir -type f -name ".prepared" -exec touch {} \;
+        echo "✅ 所有时间戳修复完成，工具链将被100%复用"
+        
         echo -e "$(nproc) thread compile"
         # 多线程编译，失败降级单线程重试，最后带日志排查
         make -j$(nproc) FORCE_UNSAFE_CONFIGURE=1 || make -j1 FORCE_UNSAFE_CONFIGURE=1 || make -j1 V=s FORCE_UNSAFE_CONFIGURE=1
