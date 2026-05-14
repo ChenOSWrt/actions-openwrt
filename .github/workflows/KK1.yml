@@ -182,9 +182,9 @@ jobs:
         fi
         
         echo -e "$(nproc) thread compile"
-        make -j$(nproc) FORCE_UNSAFE_CONFIGURE=1 $SKIP_ARGS \
-        || make -j1 FORCE_UNSAFE_CONFIGURE=1 $SKIP_ARGS \
-        || make -j1 V=s FORCE_UNSAFE_CONFIGURE=1 $SKIP_ARGS
+        FORCE_UNSAFE_CONFIGURE=1 make -j$(nproc) $SKIP_ARGS world \
+        || FORCE_UNSAFE_CONFIGURE=1 make -j1 $SKIP_ARGS world \
+        || FORCE_UNSAFE_CONFIGURE=1 make -j1 V=s $SKIP_ARGS world
        
         echo "status=success" >> $GITHUB_OUTPUT
         # 提取当前编译的设备型号
