@@ -125,6 +125,8 @@ jobs:
           echo "🔧 修复编译环境时间戳，强制复用工具链..."
           touch -d "2000-01-01 00:00:00" /workdir/openwrt/.config
           find /workdir/openwrt/staging_dir -name "*.stamp" -exec touch {} \;
+          find /workdir/openwrt/tools -type f -name "*.stamp" -exec touch {} \;
+          find /workdir/openwrt/toolchain -type f -name "*.stamp" -exec touch {} \;
           echo "✅ 时间戳修复完成，工具链将被强制复用"
 
         else
