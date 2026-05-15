@@ -106,19 +106,19 @@ jobs:
       run: |
         [ -d "${{ env.CACHE_SYNC }}/dl" ] &&
         rsync -a --delete "${{ env.CACHE_SYNC }}/dl/" /workdir/openwrt/dl/ &&
-        echo "✅ dl 同步完成"
+        echo "✅ dl 同步完成" || true
 
         [ -d "${{ env.CACHE_SYNC }}/staging_dir" ] &&
         rsync -a --delete "${{ env.CACHE_SYNC }}/staging_dir/" /workdir/openwrt/staging_dir/ &&
-        echo "✅ staging_dir 同步完成"
+        echo "✅ staging_dir 同步完成" || true
 
         [ -d "${{ env.CACHE_SYNC }}/ccache" ] &&
         rsync -a --delete "${{ env.CACHE_SYNC }}/ccache/" /workdir/openwrt/.ccache/ &&
-        echo "✅ ccache 同步完成"
+        echo "✅ ccache 同步完成" || true
 
         [ -d "${{ env.CACHE_SYNC }}/tools-stamps" ] &&
         rsync -a --delete "${{ env.CACHE_SYNC }}/tools-stamps/" /workdir/openwrt/tools/ &&
-        echo "✅ tools时间戳同步完成"
+        echo "✅ tools时间戳同步完成" || true
         
     - name: 执行PART1_FEEDS配置文件
       run: |
@@ -190,17 +190,17 @@ jobs:
       if: env.USE_CCACHE == 'true' && steps.compile.outputs.status == 'success' && !cancelled()
       run: |
         rsync -a --delete /workdir/openwrt/dl/ "${{ env.CACHE_SYNC }}/dl/" &&
-        echo "✅ dl 备份完成"
+        echo "✅ dl 备份完成" || true
 
         rsync -a --delete /workdir/openwrt/staging_dir/ "${{ env.CACHE_SYNC }}/staging_dir/" &&
-        echo "✅ staging_dir 备份完成"
+        echo "✅ staging_dir 备份完成" || true
 
         rsync -a --delete /workdir/openwrt/.ccache/ "${{ env.CACHE_SYNC }}/ccache/" &&
-        echo "✅ ccache 备份完成"
+        echo "✅ ccache 备份完成" || true
 
         find /workdir/openwrt/tools -name ".stamp*" -type f -print0 |
         rsync -a --delete --files-from=- --from0 / "${{ env.CACHE_SYNC }}/tools-stamps/" &&
-        echo "✅ tools时间戳备份完成"
+        echo "✅ tools时间戳备份完成" || true
 
     - name: 查看编译数据
       if: env.USE_CCACHE == 'true'
