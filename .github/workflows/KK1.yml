@@ -174,20 +174,30 @@ jobs:
         AUTO=true
         HASH_FILE="$CACHE_SYNC/tools.hash"
         CURRENT_HASH=$(find tools -type f -print0 | xargs -0 sha256sum | sha256sum | awk '{print $1}')
+        
+        echo "========================================"
+        echo "🔍 智能 tools 加速验证"
+        echo "📂 哈希文件路径：$HASH_FILE"
         echo "🔗 当前 tools 哈希：$CURRENT_HASH"
-        if [ -f "$HASH_FILE" ]; then
+        
+        SHIELD_TOOLS=0
+        if [ "$AUTO" = "true" ] && [ -f "$HASH_FILE" ]; then
           LAST_HASH=$(cat "$HASH_FILE")
           echo "✅ 上次哈希存在：$LAST_HASH"
+          if [ "$CURRENT_HASH" = "$LAST_HASH" ]; then
+            echo "✅ 哈希一致 → 自动屏蔽 tools 编译"
+            SHIELD_TOOLS=1
+          else
+            echo "❌ 哈希不一致 → 重新编译 tools"
+          fi
         else
           echo "❌ 无历史哈希（首次编译）"
         fi
-        [ "$AUTO" = "true" ] && [ -f "$HASH_FILE" ] && [ "$CURRENT_HASH" = "$LAST_HASH" ] && {
-          echo "✅ 哈希一致 → 自动屏蔽 tools 编译"
+        
+        if [ $SHIELD_TOOLS -eq 1 ]; then
           echo "" > tools/Makefile
-        }
-        FORCE_UNSAFE_CONFIGURE=1 make -j$(nproc) || make -j1 || make -j1 V=s
-        git checkout -- tools/Makefile
-        [ "$AUTO" = "true" ] && echo "$CURRENT_HASH" > "$HASH_FILE"
+        fi
+        echo "========================================"
                
         echo "status=success" >> $GITHUB_OUTPUT
         # 提取当前编译的设备型号
