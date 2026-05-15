@@ -104,25 +104,23 @@ jobs:
     - name: 同步编译数据
       if: env.USE_CCACHE == 'true'
       run: |
-        if [ -n "$(ls -A "${{ env.CACHE_SYNC }}")" ]; then
-          if [ -d "${{ env.CACHE_SYNC }}/dl" ]; then
-            mkdir -p /workdir/openwrt/dl
-            rsync -a --delete "${{ env.CACHE_SYNC }}/dl/" /workdir/openwrt/dl/
-            echo "✅ dl 同步完成"
-          fi
-          if [ -d "${{ env.CACHE_SYNC }}/staging_dir" ]; then
-            mkdir -p /workdir/openwrt/staging_dir
-            rsync -a --delete "${{ env.CACHE_SYNC }}/staging_dir/" /workdir/openwrt/staging_dir/
-            echo "✅ staging_dir 同步完成"
-          fi
-          if [ -d "${{ env.CACHE_SYNC }}/ccache" ]; then
-            mkdir -p /workdir/openwrt/.ccache
-            rsync -a --delete "${{ env.CACHE_SYNC }}/ccache/" /workdir/openwrt/.ccache/
-            echo "✅ ccache 同步完成"
-          fi
-        else
-          echo "⚠️ 未找到备份数据，进行全新编译"
-        fi
+        [ "$(ls -A "${{ env.CACHE_SYNC }}")" ] || { echo "ℹ️ 未检测到缓存，进行全新编译"; exit 0; }
+      
+        [ -d "${{ env.CACHE_SYNC }}/dl" ] &&
+        rsync -a --delete "${{ env.CACHE_SYNC }}/dl/" /workdir/openwrt/dl/ &&
+        echo "✅ dl 同步完成"
+
+        [ -d "${{ env.CACHE_SYNC }}/staging_dir" ] &&
+        rsync -a --delete "${{ env.CACHE_SYNC }}/staging_dir/" /workdir/openwrt/staging_dir/ &&
+        echo "✅ staging_dir 同步完成"
+
+        [ -d "${{ env.CACHE_SYNC }}/ccache" ] &&
+        rsync -a --delete "${{ env.CACHE_SYNC }}/ccache/" /workdir/openwrt/.ccache/ &&
+        echo "✅ ccache 同步完成"
+
+        [ -d "${{ env.CACHE_SYNC }}/tools-stamps" ] &&
+        rsync -a --delete "${{ env.CACHE_SYNC }}/tools-stamps/" /workdir/openwrt/tools/ &&
+        echo "✅ tools时间戳同步完成"
         
     - name: 执行PART1_FEEDS配置文件
       run: |
@@ -166,7 +164,8 @@ jobs:
         CCACHE_DIR=/workdir/openwrt/.ccache ccache -z
         export SOURCE_DATE_EPOCH=1704067200
         if [ "$USE_CCACHE" = "true" ]; then
-          if make tools/prepare -j1 -n | grep -q "make\|wget\|configure"; then
+          MAKE_OUTPUT=$(make tools/prepare -j1 -n 2>&1)
+          if echo "$MAKE_OUTPUT" | grep -q "make\|wget\|configure"; then
             echo "⚠️ 检测到tools需要更新，正常编译"
             SKIP_TOOLS=false
           else
@@ -177,7 +176,7 @@ jobs:
           echo "❌ 缓存已关闭，强制完整编译tools"
           SKIP_TOOLS=false
         fi
-        [ "$SKIP_TOOLS" = "true" ] && echo "" > tools/Makefile
+        [ "$SKIP_TOOLS" = "true" ] && echo -e "\ntools/compile: ;" >> tools/Makefile
         FORCE_UNSAFE_CONFIGURE=1 make -j$(nproc) || make -j1 || make -j1 V=s
         git checkout -- tools/Makefile
         # 成功编译标记
@@ -192,22 +191,18 @@ jobs:
     - name: 备份编译数据
       if: env.USE_CCACHE == 'true' && steps.compile.outputs.status == 'success' && !cancelled()
       run: |
-        rm -rf "${{ env.CACHE_SYNC }}"/* 
-        if [ -d /workdir/openwrt/dl ]; then
-          mkdir -p "${{ env.CACHE_SYNC }}/dl"
-          rsync -a --delete /workdir/openwrt/dl/ "${{ env.CACHE_SYNC }}/dl/"
-          echo "✅ dl 备份完成"
-        fi
-        if [ -d /workdir/openwrt/staging_dir ]; then
-          mkdir -p "${{ env.CACHE_SYNC }}/staging_dir"
-          rsync -a --delete /workdir/openwrt/staging_dir/ "${{ env.CACHE_SYNC }}/staging_dir/"
-          echo "✅ staging_dir 备份完成"
-        fi
-        if [ -d /workdir/openwrt/.ccache ]; then
-          mkdir -p "${{ env.CACHE_SYNC }}/ccache"
-          rsync -a --delete /workdir/openwrt/.ccache/ "${{ env.CACHE_SYNC }}/ccache/"
-          echo "✅ ccache 备份完成"
-        fi
+        rsync -a --delete /workdir/openwrt/dl/ "${{ env.CACHE_SYNC }}/dl/" &&
+        echo "✅ dl 备份完成"
+
+        rsync -a --delete /workdir/openwrt/staging_dir/ "${{ env.CACHE_SYNC }}/staging_dir/" &&
+        echo "✅ staging_dir 备份完成"
+
+        rsync -a --delete /workdir/openwrt/.ccache/ "${{ env.CACHE_SYNC }}/ccache/" &&
+        echo "✅ ccache 备份完成"
+
+        find /workdir/openwrt/tools -name ".stamp*" -type f -print0 |
+        rsync -a --delete --files-from=- --from0 / "${{ env.CACHE_SYNC }}/tools-stamps/" &&
+        echo "✅ tools时间戳备份完成"
 
     - name: 查看编译数据
       if: env.USE_CCACHE == 'true'
