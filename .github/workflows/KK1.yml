@@ -108,13 +108,13 @@ jobs:
         rsync -a --delete "${{ env.CACHE_SYNC }}/dl/" /workdir/openwrt/dl/ &&
         echo "✅ dl 同步完成" || true
 
-        [ -d "${{ env.CACHE_SYNC }}/staging_dir" ] &&
-        rsync -a --delete "${{ env.CACHE_SYNC }}/staging_dir/" /workdir/openwrt/staging_dir/ &&
-        echo "✅ staging_dir 同步完成" || true
-
         [ -d "${{ env.CACHE_SYNC }}/ccache" ] &&
         rsync -a --delete "${{ env.CACHE_SYNC }}/ccache/" /workdir/openwrt/.ccache/ &&
         echo "✅ ccache 同步完成" || true
+
+        [ -d "${{ env.CACHE_SYNC }}/tools-stamps" ] &&
+        rsync -a --delete "${{ env.CACHE_SYNC }}/tools-stamps/" /workdir/openwrt/tools/ &&
+        echo "✅ tools编译标记同步完成" || true
 
     - name: 执行PART1_FEEDS配置文件
       run: |
@@ -157,21 +157,23 @@ jobs:
         cd openwrt
         CCACHE_DIR=/workdir/openwrt/.ccache ccache -z
         export SOURCE_DATE_EPOCH=1704067200
+
+        SKIP_TOOLS=false
         if [ "$USE_CCACHE" = "true" ]; then
-          if ls /workdir/openwrt/tools/.stamp* 1>/dev/null 2>&1; then
-            echo "✅ 已检测到 tools 编译记录，直接跳过编译"
+          if find tools -maxdepth 1 -name ".stamp_built" -type f 2>/dev/null | grep -q .; then
+            echo "✅ 缓存已就绪，tools已编译完成，直接跳过"
             SKIP_TOOLS=true
           else
-            echo "⚠️ 首次编译，需要正常编译 tools"
+            echo "⚠️ 首次全新编译，正常完整编译tools"
             SKIP_TOOLS=false
           fi
         else
-          echo "❌ 缓存未开启，正常编译 tools"
+          echo "❌ 缓存开关未开启，强制完整全量编译"
           SKIP_TOOLS=false
         fi
-        [ "$SKIP_TOOLS" = "true" ] && echo "" > tools/Makefile
-        FORCE_UNSAFE_CONFIGURE=1 make -j$(nproc) || make -j1 V=s
-        git checkout -- tools/Makefile
+        [ "$SKIP_TOOLS" = "true" ] && sed -i '/^tools\/compile:/a \@:' tools/Makefile
+         FORCE_UNSAFE_CONFIGURE=1 make -j$(nproc) || make -j1 V=s
+         git checkout -- tools/Makefile
         
         # 成功编译标记
         echo "status=success" >> $GITHUB_OUTPUT
@@ -188,11 +190,12 @@ jobs:
         rsync -a --delete /workdir/openwrt/dl/ "${{ env.CACHE_SYNC }}/dl/" &&
         echo "✅ dl 备份完成" || true
 
-        rsync -a --delete /workdir/openwrt/staging_dir/ "${{ env.CACHE_SYNC }}/staging_dir/" &&
-        echo "✅ staging_dir 备份完成" || true
-
         rsync -a --delete /workdir/openwrt/.ccache/ "${{ env.CACHE_SYNC }}/ccache/" &&
         echo "✅ ccache 备份完成" || true
+
+        find /workdir/openwrt/tools -name ".stamp*" -type f -print0 |
+        rsync -a --delete --files-from=- --from0 / "${{ env.CACHE_SYNC }}/tools-stamps/" &&
+        echo "✅ tools编译标记备份完成" || true
 
         
     - name: 查看编译数据
