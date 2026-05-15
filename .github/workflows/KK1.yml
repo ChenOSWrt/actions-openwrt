@@ -121,9 +121,8 @@ jobs:
             rsync -a --delete "${{ env.CACHE_SYNC }}/ccache/" /workdir/openwrt/.ccache/
             echo "✅ ccache 同步完成"
           fi
-          if [ -f "${{ env.CACHE_SYNC }}/tools.hash" ]; then
-            cp "${{ env.CACHE_SYNC }}/tools.hash" /workdir/openwrt/
-            echo "✅ tools.hash 同步完成"
+          if [ -f "${CACHE_SYNC}/tools.hash" ]; then
+            echo "✅ tools.hash 已从缓存恢复"
           fi
         else
           echo "⚠️ 未找到备份数据，进行全新编译"
@@ -169,6 +168,7 @@ jobs:
       run: |
         cd openwrt
         ccache -z
+        export CCACHE_STATS=$(mktemp)
         export SOURCE_DATE_EPOCH=1704067200
     
         AUTO=true
@@ -200,6 +200,13 @@ jobs:
     - name: 备份编译数据
       if: env.USE_CCACHE == 'true' && steps.compile.outputs.status == 'success' && !cancelled()
       run: |
+        HASH_FILE="$CACHE_SYNC/tools.hash"
+        if [ -f "$HASH_FILE" ]; then
+          KEEP_HASH=$(cat "$HASH_FILE")
+          echo "$KEEP_HASH" > /tmp/tools.hash
+          echo "✅ 临时留存tools.hash文件"
+        fi
+      
         rm -rf "${{ env.CACHE_SYNC }}"/*
         echo "✅ 编译成功，开始备份..."
         if [ -d /workdir/openwrt/dl ]; then
@@ -217,8 +224,8 @@ jobs:
           rsync -a --delete /workdir/openwrt/.ccache/ "${{ env.CACHE_SYNC }}/ccache/"
           echo "✅ ccache 备份完成"
         fi
-        if [ -f "$CACHE_SYNC/tools.hash" ]; then
-          cp "$CACHE_SYNC/tools.hash" "${{ env.CACHE_SYNC }}/"
+        if [ -f /tmp/tools.hash ]; then
+          cp /tmp/tools.hash "$HASH_FILE"
           echo "✅ tools.hash 备份完成"
         fi
 
