@@ -121,9 +121,6 @@ jobs:
             rsync -a --delete "${{ env.CACHE_SYNC }}/ccache/" /workdir/openwrt/.ccache/
             echo "✅ ccache 同步完成"
           fi
-          if [ -f "${CACHE_SYNC}/tools.hash" ]; then
-            echo "✅ tools.hash 已从缓存恢复"
-          fi
         else
           echo "⚠️ 未找到备份数据，进行全新编译"
         fi
@@ -170,48 +167,12 @@ jobs:
         ccache -z
         export CCACHE_STATS=$(mktemp)
         export SOURCE_DATE_EPOCH=1704067200
-    
-        AUTO=true
-        HASH_FILE="$CACHE_SYNC/tools.hash"
-        # 使用之前计算好的纯净哈希，而不是现在重新计算
-        CURRENT_HASH="$TOOLS_PURE_HASH"
-        
-        echo "========================================"
-        echo "🔍 智能 tools 加速验证"
-        echo "📂 哈希文件路径：$HASH_FILE"
-        echo "🔗 纯净tools哈希：$CURRENT_HASH"
-        
-        SHIELD_TOOLS=0
-        if [ "$AUTO" = "true" ] && [ -f "$HASH_FILE" ]; then
-          LAST_HASH=$(cat "$HASH_FILE")
-          echo "✅ 上次哈希存在：$LAST_HASH"
-          if [ "$CURRENT_HASH" = "$LAST_HASH" ]; then
-            echo "✅ 哈希一致 → 自动屏蔽 tools 编译"
-            SHIELD_TOOLS=1
-          else
-            echo "❌ 哈希不一致 → 重新编译 tools"
-          fi
-        else
-          echo "❌ 无历史哈希（首次编译）"
-        fi
-        
-        if [ $SHIELD_TOOLS -eq 1 ]; then
-          echo "" > tools/Makefile
-        fi
-        echo "========================================"
-        
-        # ✅ 恢复核心编译命令
+
+        SKIP_TOOLS=true
+        [ "$SKIP_TOOLS" = "true" ] && echo "" > tools/Makefile
         FORCE_UNSAFE_CONFIGURE=1 make -j$(nproc) || make -j1 || make -j1 V=s
-        
-        # ✅ 恢复原始Makefile
         git checkout -- tools/Makefile
-        
-        # ✅ 编译成功后立刻更新哈希
-        if [ "$AUTO" = "true" ]; then
-          echo "$CURRENT_HASH" > "$HASH_FILE"
-          echo "✅ 哈希已更新"
-        fi
-               
+         
         echo "status=success" >> $GITHUB_OUTPUT
         # 提取当前编译的设备型号
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
@@ -223,14 +184,8 @@ jobs:
     - name: 备份编译数据
       if: env.USE_CCACHE == 'true' && steps.compile.outputs.status == 'success' && !cancelled()
       run: |
-        HASH_FILE="$CACHE_SYNC/tools.hash"
-        if [ -f "$HASH_FILE" ]; then
-          KEEP_HASH=$(cat "$HASH_FILE")
-          echo "$KEEP_HASH" > /tmp/tools.hash
-          echo "✅ 临时留存tools.hash文件"
-        fi
-      
         rm -rf "${{ env.CACHE_SYNC }}"/*
+        
         echo "✅ 编译成功，开始备份..."
         if [ -d /workdir/openwrt/dl ]; then
           mkdir -p "${{ env.CACHE_SYNC }}/dl"
@@ -246,10 +201,6 @@ jobs:
           mkdir -p "${{ env.CACHE_SYNC }}/ccache"
           rsync -a --delete /workdir/openwrt/.ccache/ "${{ env.CACHE_SYNC }}/ccache/"
           echo "✅ ccache 备份完成"
-        fi
-        if [ -f /tmp/tools.hash ]; then
-          cp /tmp/tools.hash "$HASH_FILE"
-          echo "✅ tools.hash 备份完成"
         fi
 
     - name: 查看编译数据
