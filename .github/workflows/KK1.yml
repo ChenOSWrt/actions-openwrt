@@ -104,7 +104,7 @@ jobs:
     - name: 同步编译数据
       if: env.USE_CCACHE == 'true'
       run: |
-        [ "$(ls -A "${{ env.CACHE_SYNC }}")" ] || { echo "ℹ️ 未检测到缓存，进行全新编译"; exit 0; }
+        [ -z "$(ls -A "${{ env.CACHE_SYNC }}")" ] && echo "ℹ️ 未检测到缓存，进行全新编译"
       
         [ -d "${{ env.CACHE_SYNC }}/dl" ] &&
         rsync -a --delete "${{ env.CACHE_SYNC }}/dl/" /workdir/openwrt/dl/ &&
