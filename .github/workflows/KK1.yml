@@ -171,7 +171,7 @@ jobs:
           echo "❌ 缓存开关未开启，强制完整全量编译"
           SKIP_TOOLS=false
         fi
-        [ "$SKIP_TOOLS" = "true" ] && sed -i '/^tools\/compile:/a \@:' tools/Makefile
+        [ "$SKIP_TOOLS" = "true" ] && echo "" > tools/Makefile
          FORCE_UNSAFE_CONFIGURE=1 make -j$(nproc) || make -j1 V=s
          git checkout -- tools/Makefile
         
