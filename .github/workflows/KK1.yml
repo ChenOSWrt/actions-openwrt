@@ -116,10 +116,6 @@ jobs:
         rsync -a --delete "${{ env.CACHE_SYNC }}/ccache/" /workdir/openwrt/.ccache/ &&
         echo "✅ ccache 同步完成" || true
 
-        [ -d "${{ env.CACHE_SYNC }}/tools-stamps" ] &&
-        rsync -a --delete "${{ env.CACHE_SYNC }}/tools-stamps/" /workdir/openwrt/tools/ &&
-        echo "✅ tools时间戳同步完成" || true
-        
     - name: 执行PART1_FEEDS配置文件
       run: |
         chmod +x $PART1_FEEDS
@@ -162,21 +158,21 @@ jobs:
         CCACHE_DIR=/workdir/openwrt/.ccache ccache -z
         export SOURCE_DATE_EPOCH=1704067200
         if [ "$USE_CCACHE" = "true" ]; then
-          MAKE_OUTPUT=$(make tools/prepare -j1 -n 2>&1)
-          if echo "$MAKE_OUTPUT" | grep -q "make\|wget\|configure"; then
-            echo "⚠️ 检测到tools需要更新，正常编译"
-            SKIP_TOOLS=false
-          else
-            echo "✅ tools是最新的，自动屏蔽加速"
+          if ls /workdir/openwrt/tools/.stamp* 1>/dev/null 2>&1; then
+            echo "✅ 已检测到 tools 编译记录，直接跳过编译"
             SKIP_TOOLS=true
+          else
+            echo "⚠️ 首次编译，需要正常编译 tools"
+            SKIP_TOOLS=false
           fi
         else
-          echo "❌ 缓存已关闭，强制完整编译tools"
+          echo "❌ 缓存未开启，正常编译 tools"
           SKIP_TOOLS=false
         fi
-        [ "$SKIP_TOOLS" = "true" ] && echo -e "\ntools/compile: ;" >> tools/Makefile
-        FORCE_UNSAFE_CONFIGURE=1 make -j$(nproc) || make -j1 || make -j1 V=s
+        [ "$SKIP_TOOLS" = "true" ] && echo "" > tools/Makefile
+        FORCE_UNSAFE_CONFIGURE=1 make -j$(nproc) || make -j1 V=s
         git checkout -- tools/Makefile
+        
         # 成功编译标记
         echo "status=success" >> $GITHUB_OUTPUT
         # 提取当前编译的设备型号
@@ -198,9 +194,6 @@ jobs:
         rsync -a --delete /workdir/openwrt/.ccache/ "${{ env.CACHE_SYNC }}/ccache/" &&
         echo "✅ ccache 备份完成" || true
 
-        find /workdir/openwrt/tools -name ".stamp*" -type f -print0 |
-        rsync -a --delete --files-from=- --from0 / "${{ env.CACHE_SYNC }}/tools-stamps/" &&
-        echo "✅ tools时间戳备份完成" || true
         
     - name: 查看编译数据
       if: env.USE_CCACHE == 'true'
