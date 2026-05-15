@@ -147,7 +147,7 @@ jobs:
         $GITHUB_WORKSPACE/$PART2_CUSTOM
         sed -i '/CONFIG_CCACHE/d' .config
         echo "CONFIG_CCACHE=y" >> .config
-        echo "CONFIG_CCACHE_DIR=\"\"" >> .config
+        echo "CONFIG_CCACHE_DIR=\"/workdir/openwrt/.ccache\"" >> .config
         echo "⚠️ 验证开关是否打开..."
         grep CCACHE .config
         
@@ -163,6 +163,7 @@ jobs:
       id: compile
       run: |
         cd openwrt
+        CCACHE_DIR=/workdir/openwrt/.ccache ccache -z
         export SOURCE_DATE_EPOCH=1704067200
         if [ "$USE_CCACHE" = "true" ]; then
           if make tools/prepare -j1 -n | grep -q "make\|wget\|configure"; then
@@ -174,7 +175,7 @@ jobs:
           fi
         else
           echo "❌ 缓存已关闭，强制完整编译tools"
-          SKIP_TOOLS=true
+          SKIP_TOOLS=false
         fi
         [ "$SKIP_TOOLS" = "true" ] && echo "" > tools/Makefile
         FORCE_UNSAFE_CONFIGURE=1 make -j$(nproc) || make -j1 || make -j1 V=s
@@ -211,12 +212,85 @@ jobs:
     - name: 查看编译数据
       if: env.USE_CCACHE == 'true'
       run: |
-        echo "缓存软件版本"
-        ccache --version
-        echo "缓存命中统计"
+        echo "========================================"
+        echo "🔍 ccache 缓存终极验证"
+        echo "========================================"
+        
+        # 1. 验证ccache实际使用的目录（最权威）
+        echo "📌 1. ccache 实际运行目录："
+        ACTUAL_DIR=$(CCACHE_DIR=/workdir/openwrt/.ccache ccache --get-config cache_dir)
+        echo "   配置目录：/workdir/openwrt/.ccache"
+        echo "   实际目录：$ACTUAL_DIR"
+        if [ "$ACTUAL_DIR" = "/workdir/openwrt/.ccache" ]; then
+          echo "   ✅ 目录配置正确"
+        else
+          echo "   ❌ 目录配置错误！"
+        fi
+        echo ""
+        
+        # 2. 检查系统默认目录有没有缓存（防止泄露）
+        echo "📌 2. 系统默认缓存目录检查："
+        DEFAULT_DIR="$HOME/.ccache"
+        if [ -d "$DEFAULT_DIR" ]; then
+          echo "   默认目录存在：$DEFAULT_DIR"
+          echo "   默认目录大小：$(du -sh $DEFAULT_DIR | awk '{print $1}')"
+          if [ $(du -s $DEFAULT_DIR | awk '{print $1}') -gt 1024 ]; then
+            echo "   ⚠️ 警告：系统默认目录有缓存数据！"
+          else
+            echo "   ✅ 系统默认目录为空"
+          fi
+        else
+          echo "   ✅ 系统默认目录不存在"
+        fi
+        echo ""
+        
+        # 3. 显示工作目录缓存文件结构
+        echo "📌 3. 工作目录缓存文件结构："
+        WORK_CACHE="/workdir/openwrt/.ccache"
+        if [ -d "$WORK_CACHE" ]; then
+          echo "   总大小：$(du -sh $WORK_CACHE | awk '{print $1}')"
+          echo "   一级目录结构："
+          ls -lh $WORK_CACHE | grep -v "^total" | awk '{print "   - " $9 " (" $5 ")"}'
+          echo ""
+          echo "   缓存对象数量：$(find $WORK_CACHE -type f | wc -l)"
+        else
+          echo "   ❌ 工作目录缓存不存在"
+        fi
+        echo ""
+        
+        # 4. 显示备份目录缓存文件结构
+        echo "📌 4. 备份目录缓存文件结构："
+        BACKUP_CACHE="${{ env.CACHE_SYNC }}/ccache"
+        if [ -d "$BACKUP_CACHE" ]; then
+          echo "   总大小：$(du -sh $BACKUP_CACHE | awk '{print $1}')"
+          echo "   一级目录结构："
+          ls -lh $BACKUP_CACHE | grep -v "^total" | awk '{print "   - " $9 " (" $5 ")"}'
+          echo ""
+          echo "   缓存对象数量：$(find $BACKUP_CACHE -type f | wc -l)"
+        else
+          echo "   ❌ 备份目录缓存不存在"
+        fi
+        echo ""
+        
+        # 5. 显示完整缓存命中统计
+        echo "📌 5. 完整缓存命中统计："
         CCACHE_DIR=/workdir/openwrt/.ccache ccache -s
-        echo "编译数据目录大小"
+        echo "========================================"
+        
+        # 6. 显示所有编译数据目录大小
+        echo "📌 6. 所有编译数据目录大小："
         du -sh "${{ env.CACHE_SYNC }}"/*
+        echo "========================================"
+        
+        
+        
+        
+        #echo "缓存软件版本"
+        #ccache --version
+        #echo "缓存命中统计"
+        #CCACHE_DIR=/workdir/openwrt/.ccache ccache -s
+        #echo "编译数据目录大小"
+        #du -sh "${{ env.CACHE_SYNC }}"/*
     
     - name: 查看磁盘占用
       if: steps.compile.outputs.status == 'success' && !cancelled() 
