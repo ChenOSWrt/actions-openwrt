@@ -298,23 +298,13 @@ jobs:
     - name: 生成版本号和标签
       id: tag
       if: env.UPLOAD_FIRMWARE == 'true' && steps.compile.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true' && !cancelled()
-      run: |
-        # 版本号：v1.0.x
-        echo "release_tag=v1.1.${{ github.run_number }}" >> $GITHUB_OUTPUT
-        echo "status=success" >> $GITHUB_OUTPUT
-  
-    - name: 发布核心固件到Releases页面
-      if: steps.tag.outputs.status == 'success' && !cancelled()
-      run: |
-        gh release view "${{ steps.tag.outputs.release_tag }}" >/dev/null 2>&1 || \
-        gh release create "${{ steps.tag.outputs.release_tag }}" \
-          --title "${{ steps.tag.outputs.release_tag }}" \
-          --notes-file "${{ env.RELEASE_NOTES }}"
-        gh release upload "${{ steps.tag.outputs.release_tag }}" \
-          ${{ env.FIRMWARE }}/* \
-          --clobber
+      run: bash release.sh
       env:
         GITHUB_TOKEN: ${{ github.token }}
+        GITHUB_RUN_NUMBER: ${{ github.run_number }}
+        FIRMWARE: ${{ env.FIRMWARE }}
+        RELEASE_NOTES: ${{ env.RELEASE_NOTES }}
+        VERSION_PREFIX: v2.0
 
     - name: 清理旧的Workflows运行记录
       if: always()
