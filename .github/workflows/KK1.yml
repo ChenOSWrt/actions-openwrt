@@ -114,7 +114,11 @@ jobs:
 
         [ -d "${{ env.CACHE_SYNC }}/tools-stamps" ] &&
         rsync -a --delete "${{ env.CACHE_SYNC }}/tools-stamps/" /workdir/openwrt/tools/ &&
-        echo "✅ tools编译标记同步完成" || true
+        echo "✅ tools 时间戳同步完成" || true
+
+        [ -d "${{ env.CACHE_SYNC }}/host" ] &&
+        rsync -a --delete "${{ env.CACHE_SYNC }}/host/" /workdir/openwrt/staging_dir/host/ &&
+        echo "✅ host工具链同步完成" || true
 
     - name: 执行PART1_FEEDS配置文件
       run: |
@@ -161,19 +165,20 @@ jobs:
         SKIP_TOOLS=false
         if [ "$USE_CCACHE" = "true" ]; then
           if find tools -maxdepth 1 -name ".stamp_built" -type f 2>/dev/null | grep -q .; then
-            echo "✅ 缓存已就绪，tools已编译完成，直接跳过"
+            echo "✅ 已还原host工具链，直接跳过tools编译"
             SKIP_TOOLS=true
           else
-            echo "⚠️ 首次全新编译，正常完整编译tools"
+            echo "⚠️ 首次编译，完整编译tools"
             SKIP_TOOLS=false
           fi
         else
-          echo "❌ 缓存开关未开启，强制完整全量编译"
+          echo "❌ 缓存关闭，正常编译tools"
           SKIP_TOOLS=false
         fi
-        [ "$SKIP_TOOLS" = "true" ] && echo "" > tools/Makefile
-         FORCE_UNSAFE_CONFIGURE=1 make -j$(nproc) || make -j1 V=s
-         git checkout -- tools/Makefile
+
+        [ "$SKIP_TOOLS" = "true" ] && echo "tools/compile: ;" > tools/Makefile
+        FORCE_UNSAFE_CONFIGURE=1 make -j$(nproc) || make -j1 V=s
+        git checkout -- tools/Makefile
         
         # 成功编译标记
         echo "status=success" >> $GITHUB_OUTPUT
@@ -196,6 +201,9 @@ jobs:
         find /workdir/openwrt/tools -name ".stamp*" -type f -print0 |
         rsync -a --delete --files-from=- --from0 / "${{ env.CACHE_SYNC }}/tools-stamps/" &&
         echo "✅ tools编译标记备份完成" || true
+
+        rsync -a --delete /workdir/openwrt/staging_dir/host/ "${{ env.CACHE_SYNC }}/host/" &&
+        echo "✅ host工具链备份完成" || true
 
         
     - name: 查看编译数据
