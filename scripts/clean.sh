@@ -8,25 +8,25 @@ KEEP_DAYS="${KEEP_DAYS:-7}"
 # ===================== 清理 Workflow 运行记录 =====================
 if [[ "${CLEAN_TYPE:-}" == "run" ]]; then
   echo "============================================="
-  echo "🧹 清理 GitHub Actions 旧运行记录"
+  echo "清理 GitHub Actions 旧运行记录"
   echo "保留最新条数：$KEEP_LATEST"
   echo "保留最近天数：$KEEP_DAYS 天"
   echo "============================================="
 
   echo -e "\n📅 清理超时记录..."
-  gh run list --workflow "$GITHUB_WORKFLOW" --limit all --json databaseId,createdAt -q '.[] | [.databaseId, .createdAt] | @tsv' | while read -r id createdAt; do
+  gh run list --workflow "$GITHUB_WORKFLOW" --limit 1000 --json databaseId,createdAt -q '.[] | [.databaseId, .createdAt] | @tsv' | while read -r id createdAt; do
     [ -z "$id" ] && continue
     if [[ $(date -d "$createdAt" +%s) -lt $(date -d "-${KEEP_DAYS} days" +%s) ]]; then
       echo "删除记录：$id"
-      gh run delete "$id" || echo "⚠️ 删除失败，跳过"
+      gh run delete "$id" || echo "⚠️ 删除失败跳过"
     fi
   done
 
   echo -e "\n🔢 清理超量记录..."
-  gh run list --workflow "$GITHUB_WORKFLOW" --limit all --json databaseId -q ".[${KEEP_LATEST}:][] | .databaseId" | while read -r id; do
+  gh run list --workflow "$GITHUB_WORKFLOW" --limit 1000 --json databaseId -q ".[${KEEP_LATEST}:][] | .databaseId" | while read -r id; do
     [ -n "$id" ] || continue
     echo "删除记录：$id"
-    gh run delete "$id" || echo "⚠️ 删除失败，跳过"
+    gh run delete "$id" || echo "⚠️ 删除失败跳过"
   done
 
   echo -e "\n✅ Workflow 清理完成！"
@@ -35,7 +35,7 @@ fi
 # ===================== 清理 Releases & Tags =====================
 if [[ "${CLEAN_TYPE:-}" == "release" ]]; then
   echo "============================================="
-  echo "🏷️ 清理旧 Release & Tag"
+  echo "清理旧 Release & Tag"
   echo "保留最新版本：$KEEP_LATEST"
   echo "保留最近天数：$KEEP_DAYS 天"
   echo "============================================="
@@ -58,5 +58,32 @@ if [[ "${CLEAN_TYPE:-}" == "release" ]]; then
     git push origin --delete "$tag" || true
   done
 
-  echo -e "\n✅ Release 清理完成！"
+  echo -e "\n✅ Release & Tags 清理完成！"
+fi
+
+# ===================== 3. 清理Actions缓存 =====================
+if [[ "${CLEAN_TYPE}" == "cache" ]]; then
+  echo "============================================="
+  echo "清理GitHub Actions构建缓存"
+  echo "保留最新缓存条数：$KEEP_LATEST"
+  echo "保留缓存时长：$KEEP_DAYS 天"
+  echo "============================================="
+
+  echo -e "\n📅 清理过期缓存..."
+  gh cache list --json id,createdAt --jq '.[] | [.id, .createdAt] | @tsv' | while read -r id createdAt; do
+    [ -z "$id" ] && continue
+    if [[ $(date -d "$createdAt" +%s) -lt $(date -d "-${KEEP_DAYS} days" +%s) ]]; then
+      echo "删除缓存：$id"
+      [ "$DRY_RUN" != "true" ] && gh cache delete "$id" || echo "⚠️ 删除失败跳过"
+    fi
+  done
+
+  echo -e "\n🔢 清理超量缓存..."
+  gh cache list --json id --jq ".[${KEEP_LATEST}:][] | .id" | while read -r id; do
+    [ -n "$id" ] || continue
+    echo "删除缓存：$id"
+    [ "$DRY_RUN" != "true" ] && gh cache delete "$id" || echo "⚠️ 删除失败跳过"
+  done
+
+  echo -e "\n✅ 清理完成"
 fi
