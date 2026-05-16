@@ -15,7 +15,8 @@ jobs:
           KEEP_LATEST=10
           KEEP_DAYS=14
           DRY_RUN=true
-          bash scripts/clean1.sh
+          chmod +x .github/scripts/clean1.sh
+          bash .github/scripts/clean1.sh
         env:
           GITHUB_TOKEN: ${{ github.token }}
           GITHUB_WORKFLOW: ${{ github.workflow }}
@@ -28,7 +29,8 @@ jobs:
           KEEP_LATEST=10
           KEEP_DAYS=30
           DRY_RUN=true
-          bash scripts/clean1.sh
+          chmod +x .github/scripts/clean1.sh
+          bash .github/scripts/clean1.sh
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
@@ -40,6 +42,7 @@ jobs:
           KEEP_LATEST=15
           KEEP_DAYS=7
           DRY_RUN=true
-          bash scripts/clean1.sh
+          chmod +x .github/scripts/clean1.sh
+          bash .github/scripts/clean1.sh
         env:
           GITHUB_TOKEN: ${{ github.token }}
