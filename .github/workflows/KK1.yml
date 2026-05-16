@@ -298,7 +298,7 @@ jobs:
     - name: 生成版本号和标签
       id: tag
       if: env.UPLOAD_FIRMWARE == 'true' && steps.compile.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true' && !cancelled()
-      run: bash release.sh
+      run: bash scripts/release.sh
       env:
         GITHUB_TOKEN: ${{ github.token }}
         GITHUB_RUN_NUMBER: ${{ github.run_number }}
