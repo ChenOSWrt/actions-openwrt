@@ -6,8 +6,8 @@ set -euo pipefail
 MODE=$1 NAME=$2 SRC=$3 DST=$4
 
 sync() {
-  [ -d "$SRC" ] || { echo "ℹ️ $NAME 不存在，跳过"; return; }
-  [ -z "$(ls -A "$SRC" 2>/dev/null)" ] && { echo "ℹ️ $NAME 为空，跳过"; return; }
+  [ -d "$SRC" ] || { echo "⚠️ $NAME 不存在，跳过"; return; }
+  [ -z "$(ls -A "$SRC" 2>/dev/null)" ] && { echo "⚠️ $NAME 为空，跳过"; return; }
   echo "🔄 同步 $NAME"
   mkdir -p "$DST"
   rsync -a --delete "$SRC"/ "$DST"/
