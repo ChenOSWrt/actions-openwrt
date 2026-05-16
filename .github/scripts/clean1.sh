@@ -23,7 +23,7 @@ if [[ "${CLEAN_TYPE}" == "run" ]]; then
   echo "============================================="
 
   echo -e "\n📅 开始筛选超时旧记录..."
-  gh run list --workflow "$GITHUB_WORKFLOW" --limit all --json databaseId,createdAt -q '.[] | [.databaseId, .createdAt] | @tsv' | while read -r id createdAt; do
+  gh run list --workflow "$GITHUB_WORKFLOW" --limit 1000 --json databaseId,createdAt -q '.[] | [.databaseId, .createdAt] | @tsv' | while read -r id createdAt; do
     [ -z "$id" ] && continue
     if [[ $(date -d "$createdAt" +%s) -lt $(date -d "-${KEEP_DAYS} days" +%s) ]]; then
       echo "🗑️ 待删除运行记录ID：$id"
@@ -32,7 +32,7 @@ if [[ "${CLEAN_TYPE}" == "run" ]]; then
   done
 
   echo -e "\n🔢 开始筛选超出保留条数的旧记录..."
-  gh run list --workflow "$GITHUB_WORKFLOW" --limit all --json databaseId -q ".[${KEEP_LATEST}:][] | .databaseId" | while read -r id; do
+  gh run list --workflow "$GITHUB_WORKFLOW" --limit 1000 --json databaseId -q ".[${KEEP_LATEST}:][] | .databaseId" | while read -r id; do
     [ -n "$id" ] || continue
     echo "🗑️ 待删除运行记录ID：$id"
     [ "$DRY_RUN" != "true" ] && gh run delete "$id" || echo "⚠️ 删除失败跳过"
