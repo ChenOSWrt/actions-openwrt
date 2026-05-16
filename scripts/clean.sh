@@ -72,7 +72,7 @@ if [[ "${CLEAN_TYPE}" == "cache" ]]; then
     [ -z "$id" ] && continue
     if [[ $(date -d "$createdAt" +%s) -lt $(date -d "-${KEEP_DAYS} days" +%s) ]]; then
       echo "删除缓存：$id"
-      [ "$DRY_RUN" != "true" ] && gh cache delete "$id" || echo "⚠️ 删除失败跳过"
+      gh cache delete "$id" || echo "⚠️ 删除失败跳过"
     fi
   done
 
@@ -80,7 +80,7 @@ if [[ "${CLEAN_TYPE}" == "cache" ]]; then
   gh cache list --json id --jq ".[${KEEP_LATEST}:][] | .id" | while read -r id; do
     [ -n "$id" ] || continue
     echo "删除缓存：$id"
-    [ "$DRY_RUN" != "true" ] && gh cache delete "$id" || echo "⚠️ 删除失败跳过"
+    gh cache delete "$id" || echo "⚠️ 删除失败跳过"
   done
 
 fi
