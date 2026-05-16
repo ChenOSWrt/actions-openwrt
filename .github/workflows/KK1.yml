@@ -237,7 +237,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ github.token }}
         GITHUB_WORKFLOW: ${{ github.workflow }}
-        CLEAN_TYPE: run
+        CLEAN_TYPE: workflow
         KEEP_LATEST: 5
         KEEP_DAYS: 10
         
