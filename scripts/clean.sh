@@ -8,7 +8,7 @@ KEEP_DAYS="${KEEP_DAYS:-7}"
 # ===================== 清理 Workflow 运行记录 =====================
 if [[ "${CLEAN_TYPE:-}" == "workflow" ]]; then
   echo "============================================="
-  echo "清理 GitHub Actions 旧运行记录"
+  echo "清理workflow旧运行记录"
   echo "保留最新条数：$KEEP_LATEST"
   echo "保留最近天数：$KEEP_DAYS 天"
   echo "============================================="
@@ -34,7 +34,7 @@ fi
 # ===================== 清理 Releases & Tags =====================
 if [[ "${CLEAN_TYPE:-}" == "release" ]]; then
   echo "============================================="
-  echo "清理旧 Release & Tag"
+  echo "清理旧Release和Tag"
   echo "保留最新版本：$KEEP_LATEST"
   echo "保留最近天数：$KEEP_DAYS 天"
   echo "============================================="
@@ -62,7 +62,7 @@ fi
 # ===================== 3. 清理Actions缓存 =====================
 if [[ "${CLEAN_TYPE}" == "cache" ]]; then
   echo "============================================="
-  echo "清理GitHub Actions构建缓存"
+  echo "清理Caches缓存记录"
   echo "保留最新缓存条数：$KEEP_LATEST"
   echo "保留缓存时长：$KEEP_DAYS 天"
   echo "============================================="
