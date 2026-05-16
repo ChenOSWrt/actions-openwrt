@@ -117,6 +117,7 @@ jobs:
         echo "✅ tools 时间戳同步完成" || true
 
         [ -d "${{ env.CACHE_SYNC }}/host" ] &&
+        mkdir -p /workdir/openwrt/staging_dir/host &&
         rsync -a --delete "${{ env.CACHE_SYNC }}/host/" /workdir/openwrt/staging_dir/host/ &&
         echo "✅ host工具链同步完成" || true
 
