@@ -29,7 +29,6 @@ if [[ "${CLEAN_TYPE:-}" == "run" ]]; then
     gh run delete "$id" || echo "⚠️ 删除失败跳过"
   done
 
-  echo -e "\n✅ Workflow 清理完成！"
 fi
 
 # ===================== 清理 Releases & Tags =====================
@@ -58,7 +57,6 @@ if [[ "${CLEAN_TYPE:-}" == "release" ]]; then
     git push origin --delete "$tag" || true
   done
 
-  echo -e "\n✅ Release & Tags 清理完成！"
 fi
 
 # ===================== 3. 清理Actions缓存 =====================
@@ -85,5 +83,4 @@ if [[ "${CLEAN_TYPE}" == "cache" ]]; then
     [ "$DRY_RUN" != "true" ] && gh cache delete "$id" || echo "⚠️ 删除失败跳过"
   done
 
-  echo -e "\n✅ 清理完成"
 fi
