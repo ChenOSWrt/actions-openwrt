@@ -161,22 +161,18 @@ jobs:
       run: |
         cd openwrt
         CCACHE_DIR=/workdir/openwrt/.ccache ccache -z
+        make download -j$(nproc)
         export SOURCE_DATE_EPOCH=1704067200
 
         SKIP_TOOLS=false
-        if [ "$USE_CCACHE" = "true" ]; then
-          if find tools -maxdepth 1 -name ".stamp_built" -type f 2>/dev/null | grep -q .; then
-            echo "✅ 已还原host工具链，直接跳过tools编译"
-            SKIP_TOOLS=true
-          else
-            echo "⚠️ 首次编译，完整编译tools"
-            SKIP_TOOLS=false
-          fi
+        if [ "$USE_CCACHE" = "true" ] && find tools -maxdepth 1 -name ".stamp_built" -type f 2>/dev/null | grep -q .; then
+          echo "✅ 缓存已就绪，tools已编译完成，直接跳过"
+          SKIP_TOOLS=true
         else
-          echo "❌ 缓存关闭，正常编译tools"
+          echo "⚠️ 首次全新编译，正常完整编译tools"
           SKIP_TOOLS=false
         fi
-
+    
         [ "$SKIP_TOOLS" = "true" ] && echo "tools/compile: ;" > tools/Makefile
         FORCE_UNSAFE_CONFIGURE=1 make -j$(nproc) || make -j1 V=s
         git checkout -- tools/Makefile
