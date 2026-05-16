@@ -5,7 +5,6 @@ set -euo pipefail
 KEEP_LATEST="${KEEP_LATEST:-3}"
 KEEP_DAYS="${KEEP_DAYS:-7}"
 
-# ===================== 清理 Workflow 运行记录 =====================
 if [[ "${CLEAN_TYPE:-}" == "workflow" ]]; then
   echo "============================================="
   echo "清理workflow旧运行记录"
@@ -31,7 +30,6 @@ if [[ "${CLEAN_TYPE:-}" == "workflow" ]]; then
 
 fi
 
-# ===================== 清理 Releases & Tags =====================
 if [[ "${CLEAN_TYPE:-}" == "release" ]]; then
   echo "============================================="
   echo "清理旧Release和Tag"
@@ -59,7 +57,6 @@ if [[ "${CLEAN_TYPE:-}" == "release" ]]; then
 
 fi
 
-# ===================== 3. 清理Actions缓存 =====================
 if [[ "${CLEAN_TYPE}" == "cache" ]]; then
   echo "============================================="
   echo "清理Caches缓存记录"
