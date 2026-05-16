@@ -351,27 +351,20 @@ jobs:
     - name: 清理旧的Workflows运行记录
       if: always()
       run: |
-        # 保留最新3条运行记录
-        gh run list --workflow "${{ github.workflow }}" --limit all \
-          --json databaseId -q '.[3:][] | .databaseId' \
-          | while read -r id; do
-              if [ -n "$id" ]; then
-                echo "⚠️ 正在删除运行记录：$id"
-                gh run delete "$id" || echo "❌ 删除失败：$id"
-              fi
-            done
+        CLEAN_TYPE=run
+        KEEP_LATEST=10
+        KEEP_DAYS=14
+        bash .github/scripts/clean.sh
       env:
         GITHUB_TOKEN: ${{ github.token }}
-
-    - name: 清理旧的Releases和Tags
+        GITHUB_WORKFLOW: ${{ github.workflow }}
+        
+    - name: 清理旧 Releases 和 Tags
       if: steps.tag.outputs.status == 'success' && !cancelled()
       run: |
-        # 保留最新10个版本
-        TAGS=$(gh release list --json tagName --jq '.[10:][] | .tagName')
-        for tag in $TAGS; do
-          echo "⚠️ 正在删除: $tag"
-          gh release delete "$tag" --yes
-          git push origin --delete "$tag"
-        done
+        CLEAN_TYPE=release
+        KEEP_LATEST=3
+        KEEP_DAYS=30
+        bash .github/scripts/clean.sh
       env:
         GITHUB_TOKEN: ${{ github.token }}
