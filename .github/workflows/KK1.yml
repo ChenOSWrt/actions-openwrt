@@ -99,13 +99,9 @@ jobs:
     - name: 同步编译数据
       if: env.USE_CCACHE == 'true'
       run: |
-        [ -d "${{ env.CACHE_SYNC }}/dl" ] &&
-        rsync -a --delete "${{ env.CACHE_SYNC }}/dl/" /workdir/openwrt/dl/ &&
-        echo "✅ dl 同步完成" || true
-
-        [ -d "${{ env.CACHE_SYNC }}/ccache" ] &&
-        rsync -a --delete "${{ env.CACHE_SYNC }}/ccache/" /workdir/openwrt/.ccache/ &&
-        echo "✅ ccache 同步完成" || true
+        ./sync_dir.sh sync dl          "${{ env.CACHE_SYNC }}/dl"          /workdir/openwrt/dl
+        ./sync_dir.sh sync staging_dir "${{ env.CACHE_SYNC }}/staging_dir" /workdir/openwrt/staging_dir
+        ./sync_dir.sh sync ccache      "${{ env.CACHE_SYNC }}/ccache"      /workdir/openwrt/.ccache
 
     - name: 执行PART1_FEEDS配置文件
       run: |
@@ -163,11 +159,9 @@ jobs:
     - name: 备份编译数据
       if: env.USE_CCACHE == 'true' && steps.compile.outputs.status == 'success' && !cancelled()
       run: |
-        rsync -a --delete /workdir/openwrt/dl/ "${{ env.CACHE_SYNC }}/dl/" &&
-        echo "✅ dl 备份完成" || true
-
-        rsync -a --delete /workdir/openwrt/.ccache/ "${{ env.CACHE_SYNC }}/ccache/" &&
-        echo "✅ ccache 备份完成" || true
+        ./sync_dir.sh backup dl          /workdir/openwrt/dl          ${{ env.CACHE_SYNC }}/dl
+        ./sync_dir.sh backup staging_dir /workdir/openwrt/staging_dir ${{ env.CACHE_SYNC }}/staging_dir
+        ./sync_dir.sh backup ccache      /workdir/openwrt/.ccache     ${{ env.CACHE_SYNC }}/ccache
     
     - name: 查看编译数据
       if: env.USE_CCACHE == 'true'
