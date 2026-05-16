@@ -16,16 +16,16 @@ if [[ "${CLEAN_TYPE:-}" == "workflow" ]]; then
   gh run list --workflow "$GITHUB_WORKFLOW" --limit 1000 --json databaseId,createdAt -q '.[] | [.databaseId, .createdAt] | @tsv' | while read -r id createdAt; do
     [ -z "$id" ] && continue
     if [[ $(date -d "$createdAt" +%s) -lt $(date -d "-${KEEP_DAYS} days" +%s) ]]; then
-      echo "删除记录：$id"
-      gh run delete "$id" || echo "⚠️ 删除失败跳过"
+      echo "⚠️ 删除记录：$id"
+      gh run delete "$id" || echo "❌ 删除失败跳过"
     fi
   done
 
-  echo -e "\n🔢 清理超量记录..."
+  echo -e "\n🔄 清理超量记录..."
   gh run list --workflow "$GITHUB_WORKFLOW" --limit 1000 --json databaseId -q ".[${KEEP_LATEST}:][] | .databaseId" | while read -r id; do
     [ -n "$id" ] || continue
-    echo "删除记录：$id"
-    gh run delete "$id" || echo "⚠️ 删除失败跳过"
+    echo "⚠️ 删除记录：$id"
+    gh run delete "$id" || echo "❌ 删除失败跳过"
   done
 
 fi
@@ -41,16 +41,16 @@ if [[ "${CLEAN_TYPE:-}" == "release" ]]; then
   gh release list --json tagName,publishedAt -q '.[] | [.tagName, .publishedAt] | @tsv' | while read -r tag pubTime; do
     [ -z "$tag" ] && continue
     if [[ $(date -d "$pubTime" +%s) -lt $(date -d "-${KEEP_DAYS} days" +%s) ]]; then
-      echo "删除版本：$tag"
+      echo "⚠️ 删除版本：$tag"
       gh release delete "$tag" --yes || true
       git push origin --delete "$tag" || true
     fi
   done
 
-  echo -e "\n🔢 清理超量版本..."
+  echo -e "\n🔄 清理超量版本..."
   gh release list --json tagName -q ".[${KEEP_LATEST}:][] | .tagName" | while read -r tag; do
     [ -z "$tag" ] && continue
-    echo "删除版本：$tag"
+    echo "⚠️ 删除版本：$tag"
     gh release delete "$tag" --yes || true
     git push origin --delete "$tag" || true
   done
@@ -68,16 +68,16 @@ if [[ "${CLEAN_TYPE}" == "cache" ]]; then
   gh cache list --json id,createdAt --jq '.[] | [.id, .createdAt] | @tsv' | while read -r id createdAt; do
     [ -z "$id" ] && continue
     if [[ $(date -d "$createdAt" +%s) -lt $(date -d "-${KEEP_DAYS} days" +%s) ]]; then
-      echo "删除缓存：$id"
-      gh cache delete "$id" || echo "⚠️ 删除失败跳过"
+      echo "⚠️ 删除缓存：$id"
+      gh cache delete "$id" || echo "❌ 删除失败跳过"
     fi
   done
 
-  echo -e "\n🔢 清理超量缓存..."
+  echo -e "\n🔄 清理超量缓存..."
   gh cache list --json id --jq ".[${KEEP_LATEST}:][] | .id" | while read -r id; do
     [ -n "$id" ] || continue
-    echo "删除缓存：$id"
-    gh cache delete "$id" || echo "⚠️ 删除失败跳过"
+    echo "⚠️ 删除缓存：$id"
+    gh cache delete "$id" || echo "❌ 删除失败跳过"
   done
 
 fi
