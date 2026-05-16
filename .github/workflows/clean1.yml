@@ -1,0 +1,45 @@
+name: 测试清理脚本
+
+on:
+  workflow_dispatch: # 手动触发，方便你测试
+
+jobs:
+  test-clean:
+    runs-on: ubuntu-latest
+    steps:
+      # 测试清理运行记录
+      - name: 【测试】清理旧Workflow运行记录
+        if: always()
+        run: |
+          CLEAN_TYPE=run
+          KEEP_LATEST=10
+          KEEP_DAYS=14
+          DRY_RUN=true
+          bash .github/scripts/clean1.sh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_WORKFLOW: ${{ github.workflow }}
+
+      # 测试清理版本标签
+      - name: 【测试】清理旧Releases和Tags
+        if: always()
+        run: |
+          CLEAN_TYPE=release
+          KEEP_LATEST=10
+          KEEP_DAYS=30
+          DRY_RUN=true
+          bash .github/scripts/clean1.sh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      # 测试清理构建缓存
+      - name: 【测试】清理旧Actions缓存
+        if: always()
+        run: |
+          CLEAN_TYPE=cache
+          KEEP_LATEST=15
+          KEEP_DAYS=7
+          DRY_RUN=true
+          bash .github/scripts/clean1.sh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
