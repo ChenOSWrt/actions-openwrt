@@ -6,7 +6,7 @@ KEEP_LATEST="${KEEP_LATEST:-3}"
 KEEP_DAYS="${KEEP_DAYS:-7}"
 
 # ===================== 清理 Workflow 运行记录 =====================
-if [[ "${CLEAN_TYPE:-}" == "run" ]]; then
+if [[ "${CLEAN_TYPE:-}" == "workflow" ]]; then
   echo "============================================="
   echo "清理 GitHub Actions 旧运行记录"
   echo "保留最新条数：$KEEP_LATEST"
