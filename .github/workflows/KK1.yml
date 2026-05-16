@@ -112,11 +112,6 @@ jobs:
         rsync -a --delete "${{ env.CACHE_SYNC }}/ccache/" /workdir/openwrt/.ccache/ &&
         echo "✅ ccache 同步完成" || true
 
-        [ -d "${{ env.CACHE_SYNC }}/host" ] &&
-        mkdir -p /workdir/openwrt/staging_dir/host &&
-        rsync -a --delete "${{ env.CACHE_SYNC }}/host/" /workdir/openwrt/staging_dir/host/ &&
-        echo "✅ host工具链同步完成" || true
-
     - name: 执行PART1_FEEDS配置文件
       run: |
         chmod +x $PART1_FEEDS
@@ -159,11 +154,8 @@ jobs:
         CCACHE_DIR=/workdir/openwrt/.ccache ccache -z
         export SOURCE_DATE_EPOCH=1704067200
 
-        SKIP_TOOLS=true
-        [ "$SKIP_TOOLS" = "true" ] && echo "" > tools/Makefile
-        FORCE_UNSAFE_CONFIGURE=1 make -j$(nproc) || make -j1 || make -j1 V=s
-        git checkout -- tools/Makefile
-        
+        make -j$(nproc) || make -j1 || make -j1 V=s
+
         # 成功编译标记
         echo "status=success" >> $GITHUB_OUTPUT
         # 提取当前编译的设备型号
@@ -181,11 +173,7 @@ jobs:
 
         rsync -a --delete /workdir/openwrt/.ccache/ "${{ env.CACHE_SYNC }}/ccache/" &&
         echo "✅ ccache 备份完成" || true
-
-        rsync -a --delete /workdir/openwrt/staging_dir/host/ "${{ env.CACHE_SYNC }}/host/" &&
-        echo "✅ host工具链备份完成" || true
-
-        
+    
     - name: 查看编译数据
       if: env.USE_CCACHE == 'true'
       run: |
@@ -330,21 +318,19 @@ jobs:
 
     - name: 清理旧的Workflows运行记录
       if: always()
-      run: |
-        CLEAN_TYPE=run
-        KEEP_LATEST=10
-        KEEP_DAYS=14
-        bash .github/scripts/clean.sh
+      run: bash scripts/clean.sh
       env:
         GITHUB_TOKEN: ${{ github.token }}
         GITHUB_WORKFLOW: ${{ github.workflow }}
+        CLEAN_TYPE: run
+        KEEP_LATEST: 5
+        KEEP_DAYS: 10
         
     - name: 清理旧 Releases 和 Tags
       if: steps.tag.outputs.status == 'success' && !cancelled()
-      run: |
-        CLEAN_TYPE=release
-        KEEP_LATEST=3
-        KEEP_DAYS=30
-        bash .github/scripts/clean.sh
+      run: bash scripts/clean.sh
       env:
         GITHUB_TOKEN: ${{ github.token }}
+        CLEAN_TYPE: release
+        KEEP_LATEST: 3
+        KEEP_DAYS: 10
