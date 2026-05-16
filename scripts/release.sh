@@ -28,4 +28,4 @@ gh release upload "$RELEASE_TAG" \
   "${FIRMWARE}"/* \
   --clobber
 
-echo -e "\n✅ Release 发布 & 上传完成！"
+echo -e "\n✅ 核心固件上传完成！"
