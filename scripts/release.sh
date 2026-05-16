@@ -15,15 +15,15 @@ echo "说明文件：$RELEASE_NOTES"
 echo "============================================="
 
 if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-  echo -e "\n创建新 Release ..."
+  echo -e "\n🔄 创建新版本标签..."
   gh release create "$RELEASE_TAG" \
     --title "$RELEASE_TAG" \
     --notes-file "$RELEASE_NOTES"
 else
-  echo -e "\n✅ Release 已存在，跳过创建"
+  echo -e "\n⚠️ 版本标签已存在，跳过创建"
 fi
 
-echo -e "\n上传核心固件中 ..."
+echo -e "\n🔄 上传核心固件中 ..."
 gh release upload "$RELEASE_TAG" \
   "${FIRMWARE}"/* \
   --clobber
