@@ -7,43 +7,36 @@ jobs:
   test-clean:
     runs-on: ubuntu-latest
     steps:
-      # 👇 这一步必须加！必须加！必须加！
       - name: 检出仓库代码
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
-      # 测试清理运行记录
       - name: 【测试】清理旧Workflow运行记录
         if: always()
-        run: |
-          CLEAN_TYPE=run
-          KEEP_LATEST=10
-          KEEP_DAYS=14
-          DRY_RUN=true
-          bash .github/scripts/clean1.sh
+        run: bash .github/scripts/clean1.sh
         env:
           GITHUB_TOKEN: ${{ github.token }}
           GITHUB_WORKFLOW: ${{ github.workflow }}
+          CLEAN_TYPE: run
+          KEEP_LATEST: 10
+          KEEP_DAYS: 14
+          DRY_RUN: true
 
-      # 测试清理版本标签
       - name: 【测试】清理旧Releases和Tags
         if: always()
-        run: |
-          CLEAN_TYPE=release
-          KEEP_LATEST=10
-          KEEP_DAYS=30
-          DRY_RUN=true
-          bash .github/scripts/clean1.sh
+        run: bash .github/scripts/clean1.sh
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          CLEAN_TYPE: release
+          KEEP_LATEST: 10
+          KEEP_DAYS: 30
+          DRY_RUN: true
 
-      # 测试清理构建缓存
       - name: 【测试】清理旧Actions缓存
         if: always()
-        run: |
-          CLEAN_TYPE=cache
-          KEEP_LATEST=15
-          KEEP_DAYS=7
-          DRY_RUN=true
-          bash .github/scripts/clean1.sh
+        run: bash .github/scripts/clean1.sh
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          CLEAN_TYPE: cache
+          KEEP_LATEST: 15
+          KEEP_DAYS: 7
+          DRY_RUN: true
