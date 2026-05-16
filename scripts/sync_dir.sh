@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-[ $# -ne 4 ] && { echo "用法: $0 sync/backup 名称 源目录 目标目录"; exit 1; }
+[ $# -ne 4 ] && { echo "⚠️ 用法: $0 sync/backup 名称 源目录 目标目录"; exit 1; }
 
 MODE=$1 NAME=$2 SRC=$3 DST=$4
 
