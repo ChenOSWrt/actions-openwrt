@@ -149,7 +149,7 @@ jobs:
         if [ "$HASH" = "$(cat ${{ env.CACHE_SYNC }}/tools_toolchain.hash 2>/dev/null)" ] && \
            [ -d staging_dir/host ] && \
            [ -n "$(ls -d staging_dir/toolchain-* 2>/dev/null)" ]; then
-          echo "✅ Cache缓存有效，将进入加速编译..."
+          echo "✅ Cache缓存有效，将加速编译..."
           mkdir -p tools toolchain
           printf "%%:\n\t@true\n" > tools/Makefile
           printf "%%:\n\t@true\n" > toolchain/Makefile
