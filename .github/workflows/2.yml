@@ -1,0 +1,32 @@
+name: Download Cache to Artifact
+on:
+  workflow_dispatch:
+
+jobs:
+  restore-and-download:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create the target directory first
+        run: mkdir -p /workdir/chenos
+
+      - name: Restore the target cache
+        uses: actions/cache/restore@v6
+        with:
+          key: Linux-sync-nanopc_t6-25964126010
+          path: /workdir/chenos
+          restore-keys: |
+            Linux-sync-nanopc_t6-
+          fail-on-cache-miss: false # 缓存找不到时不直接失败，方便排查
+
+      - name: Debug - Check if files exist
+        run: |
+          ls -la /workdir/chenos
+          echo "Directory size:"
+          du -sh /workdir/chenos
+
+      - name: Upload cache as downloadable artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: chenos-cache-backup
+          path: /workdir/chenos
+          retention-days: 30
