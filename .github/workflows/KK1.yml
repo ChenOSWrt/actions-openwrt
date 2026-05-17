@@ -141,19 +141,19 @@ jobs:
     - name: 跳过 tools & toolchain 编译
       run: |
         cd openwrt
-        # 跳过 tools
+        # 跳过 tools：先创建所有必要的父目录，再touch
         mkdir -p staging_dir/host/stamp build_dir/host
         find tools -name 'Makefile' | while read mk; do
           pkg=$(dirname "$mk" | sed 's|tools/||')
-          touch staging_dir/host/stamp/${pkg}.*
+          mkdir -p staging_dir/host/stamp/$pkg
+          touch staging_dir/host/stamp/$pkg/*
         done
-
-        # 跳过 toolchain（关键！）
-        mkdir -p staging_dir/host/stamp
-        touch staging_dir/host/stamp/toolchain.*
-        touch staging_dir/host/stamp/target-toolchain.*
-        touch staging_dir/host/stamp/toolchain-install.*
-  
+    
+        # 跳过 toolchain
+        touch staging_dir/host/stamp/toolchain.* 2>/dev/null || true
+        touch staging_dir/host/stamp/target-toolchain.* 2>/dev/null || true
+        touch staging_dir/host/stamp/toolchain-install.* 2>/dev/null || true
+        
     - name:  编译OpenWrt固件
       id: compile
       run: |
