@@ -142,6 +142,7 @@ jobs:
       run: |
         cd openwrt
         rm -rf tools toolchain
+        echo -e "%:\n\t@true" > toolchain/Makefile
         
     - name:  编译OpenWrt固件
       id: compile
