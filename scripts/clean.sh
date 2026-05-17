@@ -1,16 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
-# 读取参数
 KEEP_LATEST="${KEEP_LATEST:-3}"
 KEEP_DAYS="${KEEP_DAYS:-7}"
 
 if [[ "${CLEAN_TYPE:-}" == "workflow" ]]; then
-  echo "============================================="
-  echo "清理workflow旧运行记录"
-  echo "保留最新条数：$KEEP_LATEST"
+  echo
+  echo "保留最新条数：$KEEP_LATEST 条"
   echo "保留最近天数：$KEEP_DAYS 天"
-  echo "============================================="
 
   echo -e "\n📅 清理超时记录..."
   gh run list --workflow "$GITHUB_WORKFLOW" --limit 1000 --json databaseId,createdAt -q '.[] | [.databaseId, .createdAt] | @tsv' | while read -r id createdAt; do
@@ -31,11 +28,9 @@ if [[ "${CLEAN_TYPE:-}" == "workflow" ]]; then
 fi
 
 if [[ "${CLEAN_TYPE:-}" == "release" ]]; then
-  echo "============================================="
-  echo "清理旧Release和Tag"
-  echo "保留最新版本：$KEEP_LATEST"
+  echo
+  echo "保留最新版本：$KEEP_LATEST 个"
   echo "保留最近天数：$KEEP_DAYS 天"
-  echo "============================================="
 
   echo -e "\n📅 清理超时版本..."
   gh release list --json tagName,publishedAt -q '.[] | [.tagName, .publishedAt] | @tsv' | while read -r tag pubTime; do
@@ -58,11 +53,9 @@ if [[ "${CLEAN_TYPE:-}" == "release" ]]; then
 fi
 
 if [[ "${CLEAN_TYPE}" == "cache" ]]; then
-  echo "============================================="
-  echo "清理Caches缓存记录"
-  echo "保留最新缓存条数：$KEEP_LATEST"
+  echo
+  echo "保留最新缓存条数：$KEEP_LATEST 条"
   echo "保留缓存时长：$KEEP_DAYS 天"
-  echo "============================================="
 
   echo -e "\n📅 清理过期缓存..."
   gh cache list --json id,createdAt --jq '.[] | [.id, .createdAt] | @tsv' | while read -r id createdAt; do
