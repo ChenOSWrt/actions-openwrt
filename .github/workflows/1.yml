@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
 
 env:
-  # 改用 runner 自带的工作目录，有权限
+  CACHE_KEY: Linux-sync-nanopc_t6-25964126010
   CACHE_SYNC: ${{ github.workspace }}/chenos
   OPENWRT_DIR: ${{ github.workspace }}/openwrt
 
@@ -11,11 +11,16 @@ jobs:
   restore-and-download:
     runs-on: ubuntu-latest
     steps:
-      # 1. 先恢复你原来的缓存
+      - name: Check current directory
+        run: |
+          pwd
+          ls -la
+
       - name: Restore compile cache
+        id: cache-restore
         uses: actions/cache/restore@v5
         with:
-          key: Linux-sync-nanopc_t6-25964126010
+          key: ${{ env.CACHE_KEY }}
           path: |
             ${{ env.CACHE_SYNC }}/dl
             ${{ env.CACHE_SYNC }}/staging_dir
@@ -24,37 +29,43 @@ jobs:
             Linux-sync-nanopc_t6-
           fail-on-cache-miss: false
 
-      # 2. 把缓存恢复到有权限的目录
+      - name: Check cache restore status
+        run: |
+          echo "Cache hit? ${{ steps.cache-restore.outputs.cache-hit }}"
+          echo "Cache restore output:"
+          echo "${{ steps.cache-restore.outputs.* }}"
+          echo "=== CACHE_SYNC dir ==="
+          ls -la ${{ env.CACHE_SYNC }} || echo "CACHE_SYNC dir not found"
+          echo "=== dl dir ==="
+          ls -la ${{ env.CACHE_SYNC }}/dl || echo "dl dir not found"
+          echo "=== staging_dir ==="
+          ls -la ${{ env.CACHE_SYNC }}/staging_dir || echo "staging_dir not found"
+          echo "=== ccache dir ==="
+          ls -la ${{ env.CACHE_SYNC }}/ccache || echo "ccache dir not found"
+
       - name: Sync cache back to openwrt dir
+        if: steps.cache-restore.outputs.cache-hit == 'true'
         run: |
           mkdir -p ${{ env.OPENWRT_DIR }}
-          # 同步 dl 目录
           if [ -d "${{ env.CACHE_SYNC }}/dl" ]; then
             rsync -av "${{ env.CACHE_SYNC }}/dl/" "${{ env.OPENWRT_DIR }}/dl/"
           fi
-          # 同步 staging_dir 目录
           if [ -d "${{ env.CACHE_SYNC }}/staging_dir" ]; then
             rsync -av "${{ env.CACHE_SYNC }}/staging_dir/" "${{ env.OPENWRT_DIR }}/staging_dir/"
           fi
-          # 同步 ccache 目录
           if [ -d "${{ env.CACHE_SYNC }}/ccache" ]; then
             mkdir -p "${{ env.OPENWRT_DIR }}/.ccache"
             rsync -av "${{ env.CACHE_SYNC }}/ccache/" "${{ env.OPENWRT_DIR }}/.ccache/"
           fi
 
-      # 3. 调试：确认文件是否恢复成功
-      - name: Debug - Check restored files
+      - name: Debug - Check openwrt dir
+        if: steps.cache-restore.outputs.cache-hit == 'true'
         run: |
           ls -la ${{ env.OPENWRT_DIR }}
-          echo "=== dl dir ==="
-          ls -la ${{ env.OPENWRT_DIR }}/dl/ || echo "dl dir not found"
-          echo "=== staging_dir ==="
-          ls -la ${{ env.OPENWRT_DIR }}/staging_dir/ || echo "staging_dir not found"
-          echo "=== .ccache ==="
-          ls -la ${{ env.OPENWRT_DIR }}/.ccache/ || echo ".ccache not found"
+          du -sh ${{ env.OPENWRT_DIR }}
 
-      # 4. 上传为可下载的Artifact
       - name: Upload full cache as artifact
+        if: steps.cache-restore.outputs.cache-hit == 'true'
         uses: actions/upload-artifact@v6
         with:
           name: openwrt-compile-cache
