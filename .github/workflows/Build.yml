@@ -82,15 +82,14 @@ jobs:
         # 赋予工作目录权限
         sudo chown $USER:$GROUPS /workdir "${{ env.CACHE_SYNC }}"
 
-    - name: 恢复编译数据
+    - name: 恢复编译加速数据
       if: env.USE_CCACHE == 'true'
       uses: actions/cache@v5
       with:
         path: ${{ env.CACHE_SYNC }}
-        key: ${{ runner.os }}-sync-${{ matrix.device }}-v10
+        key: ${{ runner.os }}-sync-${{ matrix.device }}-${{ github.run_id }}
         restore-keys: |
           ${{ runner.os }}-sync-${{ matrix.device }}-
-        save-always: ${{ env.CACHE_SAVE_ALWAYS }}
   
     - name: 克隆OpenWrt源码
       working-directory: /workdir
@@ -102,29 +101,12 @@ jobs:
         # 创建软链接，方便后续调用
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
-    - name: 同步编译数据
+    - name: 同步编译加速数据
       if: env.USE_CCACHE == 'true'
       run: |
-        if [ -n "$(ls -A "${{ env.CACHE_SYNC }}")" ]; then
-          echo "✅ 发现数据，开始同步..."
-          if [ -d "${{ env.CACHE_SYNC }}/dl" ]; then
-            mkdir -p /workdir/openwrt/dl
-            rsync -a --delete "${{ env.CACHE_SYNC }}/dl/" /workdir/openwrt/dl/
-            echo "✅ dl 同步完成"
-          fi
-          if [ -d "${{ env.CACHE_SYNC }}/staging_dir" ]; then
-            mkdir -p /workdir/openwrt/staging_dir
-            rsync -a --delete "${{ env.CACHE_SYNC }}/staging_dir/" /workdir/openwrt/staging_dir/
-            echo "✅ staging_dir 同步完成"
-          fi
-          if [ -d "${{ env.CACHE_SYNC }}/ccache" ]; then
-            mkdir -p /workdir/openwrt/.ccache
-            rsync -a --delete "${{ env.CACHE_SYNC }}/ccache/" /workdir/openwrt/.ccache/
-            echo "✅ ccache 同步完成"
-          fi
-        else
-          echo "⚠️ 未找到备份数据，进行全新编译"
-        fi
+        bash scripts/rsync.sh sync dl          "${{ env.CACHE_SYNC }}/dl"          /workdir/openwrt/dl
+        bash scripts/rsync.sh sync staging_dir "${{ env.CACHE_SYNC }}/staging_dir" /workdir/openwrt/staging_dir
+        bash scripts/rsync.sh sync ccache      "${{ env.CACHE_SYNC }}/ccache"      /workdir/openwrt/.ccache
         
     - name: 执行PART1_FEEDS配置文件
       run: |
@@ -160,12 +142,23 @@ jobs:
         # 列出和删除小于1024字节的无效文件
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
+
+    - name: 检测编译是否跳过tool和toolchain
+      if: env.USE_CCACHE == 'true'
+      run: |
+        cd openwrt
+        HASH=$(find tools toolchain -type f \( -name "*.mk" -o -name "Makefile" \) | sort | xargs cat 2>/dev/null | sha256sum | cut -c1-16)
+        [ "$HASH" = "$(cat ${{ env.CACHE_SYNC }}/tools_toolchain.hash 2>/dev/null)" ] && \
+        [ -d staging_dir/host ] && \
+        [ -n "$(ls -d staging_dir/toolchain-* 2>/dev/null)" ] && \
+        mkdir -p tools toolchain && \
+        printf "%%:\n\t@true\n" > tools/Makefile && \
+        printf "%%:\n\t@true\n" > toolchain/Makefile || true
   
     - name:  编译OpenWrt固件
       id: compile
       run: |
         cd openwrt
-        export SOURCE_DATE_EPOCH=1704067200
         echo -e "$(nproc) thread compile"
         # 多线程编译，失败降级单线程重试，最后带日志排查
         make -j$(nproc) || make -j1 || make -j1 V=s
@@ -177,38 +170,27 @@ jobs:
         # 生成时间戳写入环境变量
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
-    - name: 备份编译数据
+    - name: 备份编译加速数据
       if: env.USE_CCACHE == 'true' && steps.compile.outputs.status == 'success' && !cancelled()
       run: |
-        rm -rf "${{ env.CACHE_SYNC }}"/*
-        echo "✅ 编译成功，开始备份..."
-        if [ -d /workdir/openwrt/dl ]; then
-          mkdir -p "${{ env.CACHE_SYNC }}/dl"
-          rsync -a --delete /workdir/openwrt/dl/ "${{ env.CACHE_SYNC }}/dl/"
-          echo "✅ dl 备份完成"
-        fi
-        if [ -d /workdir/openwrt/staging_dir ]; then
-          mkdir -p "${{ env.CACHE_SYNC }}/staging_dir"
-          rsync -a --delete /workdir/openwrt/staging_dir/ "${{ env.CACHE_SYNC }}/staging_dir/"
-          echo "✅ staging_dir 备份完成"
-        fi
-        if [ -d /workdir/openwrt/.ccache ]; then
-          mkdir -p "${{ env.CACHE_SYNC }}/ccache"
-          rsync -a --delete /workdir/openwrt/.ccache/ "${{ env.CACHE_SYNC }}/ccache/"
-          echo "✅ ccache 备份完成"
-        fi
+        bash scripts/rsync.sh backup dl          /workdir/openwrt/dl          ${{ env.CACHE_SYNC }}/dl
+        bash scripts/rsync.sh backup staging_dir /workdir/openwrt/staging_dir ${{ env.CACHE_SYNC }}/staging_dir
+        bash scripts/rsync.sh backup ccache      /workdir/openwrt/.ccache     ${{ env.CACHE_SYNC }}/ccache
+        # 验证跳过tools和toolchain关键
+        (cd openwrt && find tools toolchain -type f \( -name "*.mk" -o -name Makefile \) | sort \
+        | xargs cat 2>/dev/null | sha256sum | cut -c-16) > "${{ env.CACHE_SYNC }}/tools_toolchain.hash"
         
-    - name: 查看编译数据
+    - name: 查看编译加速数据
       if: env.USE_CCACHE == 'true'
       run: |
-        echo "缓存软件版本"
-        ccache --version
-        echo "缓存命中统计"
+        echo-e "⚠️ 缓存软件版本"
+        ccache --version | head -n1
+        echo-e "\n⚠️ 缓存命中统计"
         CCACHE_DIR=/workdir/openwrt/.ccache ccache -s
-        echo "编译数据目录大小"
+        echo-e "\n⚠️ 编译数据目录大小"
         du -sh "${{ env.CACHE_SYNC }}"/*
     
-    - name: 查看磁盘占用
+    - name: 查看系统磁盘占用
       if: steps.compile.outputs.status == 'success' && !cancelled() 
       run: df -hT
   
@@ -216,10 +198,7 @@ jobs:
       uses: actions/upload-artifact@v6
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true' && !cancelled() 
       with:
-        # 打包名称
         name: ${{ env.SOURCE_NAME }}_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-        #name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-        # 上传路径
         path: openwrt/bin
   
     - name: 精简Bin目录，保留核心固件
@@ -227,12 +206,10 @@ jobs:
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
         cd openwrt/bin/targets/*/*
-        # 保留.img、.img.gz文件
         find . -type f ! -name '*.img' ! -name '*.img.gz' -delete
         rm -rf packages
         echo "✅ 最终保留的文件："
         ls -lh
-        # 固件路径写入环境变量
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
   
@@ -240,57 +217,47 @@ jobs:
       uses: actions/upload-artifact@v6
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
-        # 固件包名称
         name: ${{ env.SOURCE_NAME }}_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-        #name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-        # 固件路径
         path: ${{ env.FIRMWARE }}
   
-    - name: 生成版本号和标签
-      id: tag
-      if: env.UPLOAD_FIRMWARE == 'true' && env.UPLOAD_RELEASE == 'true' && !cancelled()
-      run: |
-        # 版本号：v1.0.x
-        echo "release_tag=v1.1.${{ github.run_number }}" >> $GITHUB_OUTPUT
-        echo "status=success" >> $GITHUB_OUTPUT
-  
     - name: 发布核心固件到Releases页面
-      if: steps.tag.outputs.status == 'success' && !cancelled()
-      run: |
-        gh release view "${{ steps.tag.outputs.release_tag }}" >/dev/null 2>&1 || \
-        gh release create "${{ steps.tag.outputs.release_tag }}" \
-          --title "${{ steps.tag.outputs.release_tag }}" \
-          --notes-file "${{ env.RELEASE_NOTES }}"
-        gh release upload "${{ steps.tag.outputs.release_tag }}" \
-          ${{ env.FIRMWARE }}/* \
-          --clobber
+      id: tag
+      if: steps.organize.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true' && !cancelled()
+      run: bash scripts/release.sh
       env:
         GITHUB_TOKEN: ${{ github.token }}
+        GITHUB_RUN_NUMBER: ${{ github.run_number }}
+        FIRMWARE: ${{ env.FIRMWARE }}
+        RELEASE_NOTES: ${{ env.RELEASE_NOTES }}
+        VERSION_PREFIX: v1.0
 
-    - name: 清理旧的Workflows运行记录
+    - name: 清理旧Releases和Tags
+      if: steps.tag.outputs.status == 'success' && !cancelled()
+      run: bash scripts/clean.sh
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        CLEAN_TYPE: release
+        KEEP_LATEST: 10
+        KEEP_DAYS: 90
+
+    - name: 清理旧Workflows运行记录
       if: always()
-      run: |
-        # 保留最新3条运行记录
-        gh run list --workflow "${{ github.workflow }}" --limit all \
-          --json databaseId -q '.[3:][] | .databaseId' \
-          | while read -r id; do
-              if [ -n "$id" ]; then
-                echo "⚠️ 正在删除运行记录：$id"
-                gh run delete "$id" || echo "❌ 删除失败：$id"
-              fi
-            done
+      run: bash scripts/clean.sh
       env:
         GITHUB_TOKEN: ${{ github.token }}
+        GITHUB_WORKFLOW: ${{ github.workflow }}
+        CLEAN_TYPE: workflow
+        KEEP_LATEST: 5
+        KEEP_DAYS: 30
 
-    - name: 清理旧的Releases和Tags
-      if: steps.tag.outputs.status == 'success' && !cancelled()
-      run: |
-        # 保留最新10个版本
-        TAGS=$(gh release list --json tagName --jq '.[10:][] | .tagName')
-        for tag in $TAGS; do
-          echo "⚠️ 正在删除: $tag"
-          gh release delete "$tag" --yes
-          git push origin --delete "$tag"
-        done
+    - name: 清理旧缓存记录
+      if: always()
+      run: bash scripts/clean.sh
       env:
         GITHUB_TOKEN: ${{ github.token }}
+        GITHUB_WORKFLOW: ${{ github.workflow }}
+        CLEAN_TYPE: workflow
+        KEEP_LATEST: 3
+        KEEP_DAYS: 6
+
+    
