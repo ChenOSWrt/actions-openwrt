@@ -185,11 +185,11 @@ jobs:
     - name: 查看编译加速数据
       if: env.USE_CCACHE == 'true'
       run: |
-        echo-e "⚠️ 缓存软件版本"
+        echo -e "⚠️ 缓存软件版本"
         ccache --version | head -n1
-        echo-e "\n⚠️ 缓存命中统计"
+        echo -e "\n⚠️ 缓存命中统计"
         CCACHE_DIR=/workdir/openwrt/.ccache ccache -s
-        echo-e "\n⚠️ 编译数据目录大小"
+        echo -e "\n⚠️ 编译数据目录大小"
         du -sh "${{ env.CACHE_SYNC }}"/*
     
     - name: 查看系统磁盘占用
