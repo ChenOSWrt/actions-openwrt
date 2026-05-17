@@ -259,7 +259,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ github.token }}
         CLEAN_TYPE: cache
-        KEEP_LATEST: 3
+        KEEP_LATEST: 2
         KEEP_DAYS: 6
 
     
