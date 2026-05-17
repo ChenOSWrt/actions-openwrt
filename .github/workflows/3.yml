@@ -1,0 +1,59 @@
+name: Download Compile Cache
+on:
+  workflow_dispatch:
+
+env:
+  CACHE_SYNC: /workdir/chenos
+
+jobs:
+  restore-and-download:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. 先恢复你原来的缓存（关键！）
+      - name: Restore compile cache
+        uses: actions/cache/restore@v5
+        with:
+          key: Linux-sync-nanopc_t6-25964126010
+          path: |
+            ${{ env.CACHE_SYNC }}/dl
+            ${{ env.CACHE_SYNC }}/staging_dir
+            ${{ env.CACHE_SYNC }}/ccache
+          restore-keys: |
+            Linux-sync-nanopc_t6-
+          fail-on-cache-miss: false
+
+      # 2. 把缓存恢复到原来的编译路径
+      - name: Sync cache back to openwrt dir
+        run: |
+          mkdir -p /workdir/openwrt
+          # 同步 dl 目录
+          if [ -d "${{ env.CACHE_SYNC }}/dl" ]; then
+            rsync -av "${{ env.CACHE_SYNC }}/dl/" /workdir/openwrt/dl/
+          fi
+          # 同步 staging_dir 目录
+          if [ -d "${{ env.CACHE_SYNC }}/staging_dir" ]; then
+            rsync -av "${{ env.CACHE_SYNC }}/staging_dir/" /workdir/openwrt/staging_dir/
+          fi
+          # 同步 ccache 目录
+          if [ -d "${{ env.CACHE_SYNC }}/ccache" ]; then
+            rsync -av "${{ env.CACHE_SYNC }}/ccache/" /workdir/openwrt/.ccache/
+          fi
+
+      # 3. 调试：确认文件是否恢复成功
+      - name: Debug - Check restored files
+        run: |
+          ls -la /workdir/openwrt/
+          echo "=== dl dir ==="
+          ls -la /workdir/openwrt/dl/ || echo "dl dir not found"
+          echo "=== staging_dir ==="
+          ls -la /workdir/openwrt/staging_dir/ || echo "staging_dir not found"
+          echo "=== .ccache ==="
+          ls -la /workdir/openwrt/.ccache/ || echo ".ccache not found"
+
+      # 4. 把恢复好的目录上传为可下载的Artifact
+      - name: Upload full cache as artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: openwrt-compile-cache
+          path: /workdir/openwrt/
+          retention-days: 30
