@@ -126,7 +126,7 @@ jobs:
         $GITHUB_WORKSPACE/$PART2_CUSTOM
         #sed -i '/CONFIG_CCACHE/d' .config
         echo "CONFIG_CCACHE=y" >> .config
-        #echo "CONFIG_CCACHE_DIR=\"\"" >> .config
+        #echo "CONFIG_CCACHE_DIR=\"/workdir/openwrt/.ccache\"" >> .config
         echo "⚠️ 验证开关是否打开..."
         grep CCACHE .config
         
