@@ -141,21 +141,21 @@ jobs:
     - name: 彻底跳过 tools 和 toolchain
       run: |
         cd openwrt
-        mkdir -p tools toolchain
-        echo -e "%:\n\t@true" > tools/Makefile
-        echo -e "%:\n\t@true" > toolchain/Makefile
-        
+        HASH=$(find tools toolchain -name "*.mk" -o -name "Makefile" | sort | xargs cat | sha256sum | cut -c1-16)
+        [ "$HASH" = "$(cat ${{ env.CACHE_SYNC }}/tools_toolchain.hash 2>/dev/null)" ] && \
+        [ -d staging_dir/host ] && \
+        [ -d staging_dir/toolchain-* ] && \
+        mkdir -p tools toolchain && \
+        echo -e "%:\n\t@true" > tools/Makefile && \
+        echo -e "%:\n\t@true" > toolchain/Makefile 
+       
     - name:  编译OpenWrt固件
       id: compile
       run: |
         cd openwrt
         CCACHE_DIR=/workdir/openwrt/.ccache ccache -z
         export SOURCE_DATE_EPOCH=1704067200
-
         make -j$(nproc) || make -j1 || make -j1 V=s  
-
-
-        
         # 成功编译标记
         echo "status=success" >> $GITHUB_OUTPUT
         # 提取当前编译的设备型号
