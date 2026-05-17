@@ -161,7 +161,8 @@ jobs:
       id: compile
       run: |
         cd openwrt
-        echo -e "$(nproc) thread compile"
+        CCACHE_DIR=/workdir/openwrt/.ccache ccache -z
+        echo -e "开启$(nproc)线程编译"
         # 多线程编译，失败降级单线程重试，最后带日志排查
         make -j$(nproc) || make -j1 || make -j1 V=s
         echo "status=success" >> $GITHUB_OUTPUT
