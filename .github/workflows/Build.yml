@@ -138,7 +138,7 @@ jobs:
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
-    - name: 检测编译是否跳过tool和toolchain
+    - name: 自动检测是否进入编译加速
       if: env.USE_CCACHE == 'true'
       run: |
         cd openwrt
