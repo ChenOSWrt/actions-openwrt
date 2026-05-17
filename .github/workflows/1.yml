@@ -1,22 +1,62 @@
-name: Download Cache to Artifact
+name: Download Compile Cache
 on:
-  workflow_dispatch: # 手动触发，随时可以跑
+  workflow_dispatch:
+
+env:
+  # 改用 runner 自带的工作目录，有权限
+  CACHE_SYNC: ${{ github.workspace }}/chenos
+  OPENWRT_DIR: ${{ github.workspace }}/openwrt
 
 jobs:
   restore-and-download:
     runs-on: ubuntu-latest
     steps:
-      - name: Restore the target cache
+      # 1. 先恢复你原来的缓存
+      - name: Restore compile cache
         uses: actions/cache/restore@v5
         with:
-          # 这里填你截图里的缓存key
           key: Linux-sync-nanopc_t6-25964126010
-          # 这里用你图里给的路径
-          path: /workdir/chenos
+          path: |
+            ${{ env.CACHE_SYNC }}/dl
+            ${{ env.CACHE_SYNC }}/staging_dir
+            ${{ env.CACHE_SYNC }}/ccache
+          restore-keys: |
+            Linux-sync-nanopc_t6-
+          fail-on-cache-miss: false
 
-      - name: Upload cache as downloadable artifact
+      # 2. 把缓存恢复到有权限的目录
+      - name: Sync cache back to openwrt dir
+        run: |
+          mkdir -p ${{ env.OPENWRT_DIR }}
+          # 同步 dl 目录
+          if [ -d "${{ env.CACHE_SYNC }}/dl" ]; then
+            rsync -av "${{ env.CACHE_SYNC }}/dl/" "${{ env.OPENWRT_DIR }}/dl/"
+          fi
+          # 同步 staging_dir 目录
+          if [ -d "${{ env.CACHE_SYNC }}/staging_dir" ]; then
+            rsync -av "${{ env.CACHE_SYNC }}/staging_dir/" "${{ env.OPENWRT_DIR }}/staging_dir/"
+          fi
+          # 同步 ccache 目录
+          if [ -d "${{ env.CACHE_SYNC }}/ccache" ]; then
+            mkdir -p "${{ env.OPENWRT_DIR }}/.ccache"
+            rsync -av "${{ env.CACHE_SYNC }}/ccache/" "${{ env.OPENWRT_DIR }}/.ccache/"
+          fi
+
+      # 3. 调试：确认文件是否恢复成功
+      - name: Debug - Check restored files
+        run: |
+          ls -la ${{ env.OPENWRT_DIR }}
+          echo "=== dl dir ==="
+          ls -la ${{ env.OPENWRT_DIR }}/dl/ || echo "dl dir not found"
+          echo "=== staging_dir ==="
+          ls -la ${{ env.OPENWRT_DIR }}/staging_dir/ || echo "staging_dir not found"
+          echo "=== .ccache ==="
+          ls -la ${{ env.OPENWRT_DIR }}/.ccache/ || echo ".ccache not found"
+
+      # 4. 上传为可下载的Artifact
+      - name: Upload full cache as artifact
         uses: actions/upload-artifact@v6
         with:
-          name: chenos-cache-backup
-          path: /workdir/chenos
-          retention-days: 30 # 保留30天，方便你下载
+          name: openwrt-compile-cache
+          path: ${{ env.OPENWRT_DIR }}/
+          retention-days: 30
