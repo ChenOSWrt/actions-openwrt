@@ -146,8 +146,29 @@ jobs:
         export SOURCE_DATE_EPOCH=1704067200
 
         make defconfig
+        make -j$(nproc) world \
+          --eval 'tools/compile:; @true' \
+          --eval 'tools/install:; @true' \
+          --eval 'tools/prereq:; @true' \
+          --eval 'toolchain/compile:; @true' \
+          --eval 'toolchain/install:; @true' \
+          --eval 'toolchain/prereq:; @true' \
+          || make -j1 world \
+          --eval 'tools/compile:; @true' \
+          --eval 'tools/install:; @true' \
+          --eval 'tools/prereq:; @true' \
+          --eval 'toolchain/compile:; @true' \
+          --eval 'toolchain/install:; @true' \
+          --eval 'toolchain/prereq:; @true' \
+          || make -j1 V=s world \
+          --eval 'tools/compile:; @true' \
+          --eval 'tools/install:; @true' \
+          --eval 'tools/prereq:; @true' \
+          --eval 'toolchain/compile:; @true' \
+          --eval 'toolchain/install:; @true' \
+          --eval 'toolchain/prereq:; @true'
 
-        make -j$(nproc) world -W tools/install -W toolchain/install || make -j1 world -W tools/install -W toolchain/install || make -j1 V=s world -W tools/install -W toolchain/install
+        
         # 成功编译标记
         echo "status=success" >> $GITHUB_OUTPUT
         # 提取当前编译的设备型号
