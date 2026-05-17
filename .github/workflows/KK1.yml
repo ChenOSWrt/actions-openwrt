@@ -141,13 +141,16 @@ jobs:
     - name: 彻底跳过 tools 和 toolchain
       run: |
         cd openwrt
-        HASH=$(find tools toolchain -name "*.mk" -o -name "Makefile" | sort | xargs cat | sha256sum | cut -c1-16)
+        HASH=$(find tools toolchain -type f \( -name "*.mk" -o -name "Makefile" \) | sort | xargs cat 2>/dev/null | sha256sum | cut -c1-16)
         [ "$HASH" = "$(cat ${{ env.CACHE_SYNC }}/tools_toolchain.hash 2>/dev/null)" ] && \
         [ -d staging_dir/host ] && \
-        [ -d staging_dir/toolchain-* ] && \
+        [ -n "$(ls -d staging_dir/toolchain-* 2>/dev/null)" ] && \
         mkdir -p tools toolchain && \
-        echo -e "%:\n\t@true" > tools/Makefile && \
-        echo -e "%:\n\t@true" > toolchain/Makefile 
+        printf "%%:\n\t@true\n" > tools/Makefile && \
+        printf "%%:\n\t@true\n" > toolchain/Makefile || true
+        # mkdir -p tools toolchain && \
+        # echo -e "%:\n\t@true" > tools/Makefile && \
+        # echo -e "%:\n\t@true" > toolchain/Makefile 
        
     - name:  编译OpenWrt固件
       id: compile
