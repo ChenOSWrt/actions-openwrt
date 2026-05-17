@@ -140,7 +140,7 @@ jobs:
 
     - name: 彻底跳过 tools 和 toolchain
       run: |
-         cd openwrt
+        cd openwrt
         mkdir -p toolchain && echo -e "%:\n\t@true" > toolchain/Makefile
         rm -rf tools
         
