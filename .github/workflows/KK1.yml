@@ -141,8 +141,9 @@ jobs:
     - name: 彻底跳过 tools 和 toolchain
       run: |
         cd openwrt
-        mkdir -p toolchain && echo -e "%:\n\t@true" > toolchain/Makefile
-        rm -rf tools
+        mkdir -p tools toolchain
+        echo -e "%:\n\t@true" > tools/Makefile
+        echo -e "%:\n\t@true" > toolchain/Makefile
         
     - name:  编译OpenWrt固件
       id: compile
