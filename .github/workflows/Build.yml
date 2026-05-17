@@ -257,8 +257,7 @@ jobs:
       run: bash scripts/clean.sh
       env:
         GITHUB_TOKEN: ${{ github.token }}
-        GITHUB_WORKFLOW: ${{ github.workflow }}
-        CLEAN_TYPE: workflow
+        CLEAN_TYPE: cache
         KEEP_LATEST: 3
         KEEP_DAYS: 6
 
