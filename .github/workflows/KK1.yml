@@ -103,6 +103,31 @@ jobs:
         bash scripts/rsync.sh sync staging_dir "${{ env.CACHE_SYNC }}/staging_dir" /workdir/openwrt/staging_dir
         bash scripts/rsync.sh sync ccache      "${{ env.CACHE_SYNC }}/ccache"      /workdir/openwrt/.ccache
 
+    - name: 强制标记 tools & toolchain 已编译
+      run: |
+        cd openwrt
+        # 1. 先确保所有父目录存在
+        mkdir -p staging_dir/host/stamp build_dir/host build_dir/toolchain
+    
+        # 2. 标记所有 tools 为已编译（安全创建路径）
+        find tools -name 'Makefile' | while read mk; do
+          pkg=$(dirname "$mk" | sed 's|tools/||')
+          mkdir -p staging_dir/host/stamp/$pkg
+          # 创建任意 stamp 文件（只要存在就行）
+          touch staging_dir/host/stamp/$pkg/.built
+          touch staging_dir/host/stamp/$pkg/.configured
+          touch staging_dir/host/stamp/$pkg/.prepared
+        done
+    
+        # 3. 标记 toolchain 为已编译
+        touch staging_dir/host/stamp/toolchain.* 2>/dev/null || true
+        touch staging_dir/host/stamp/target-toolchain.* 2>/dev/null || true
+        touch staging_dir/host/stamp/toolchain-install.* 2>/dev/null || true
+    
+        # 4. 直接告诉 make 跳过 tools/toolchain
+        echo "CONFIG_AUTOREBUILD=n" >> .config
+        echo "CONFIG_CLEAN_IPKG=n" >> .config
+
     - name: 执行PART1_FEEDS配置文件
       run: |
         chmod +x $PART1_FEEDS
@@ -137,22 +162,6 @@ jobs:
         # 列出和删除小于1024字节的无效文件
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
-
-    - name: 跳过 tools & toolchain 编译
-      run: |
-        cd openwrt
-        # 跳过 tools：先创建所有必要的父目录，再touch
-        mkdir -p staging_dir/host/stamp build_dir/host
-        find tools -name 'Makefile' | while read mk; do
-          pkg=$(dirname "$mk" | sed 's|tools/||')
-          mkdir -p staging_dir/host/stamp/$pkg
-          touch staging_dir/host/stamp/$pkg/*
-        done
-    
-        # 跳过 toolchain
-        touch staging_dir/host/stamp/toolchain.* 2>/dev/null || true
-        touch staging_dir/host/stamp/target-toolchain.* 2>/dev/null || true
-        touch staging_dir/host/stamp/toolchain-install.* 2>/dev/null || true
         
     - name:  编译OpenWrt固件
       id: compile
