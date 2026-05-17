@@ -125,7 +125,7 @@ jobs:
         make defconfig
         $GITHUB_WORKSPACE/$PART2_CUSTOM
         #sed -i '/CONFIG_CCACHE/d' .config
-        #echo "CONFIG_CCACHE=y" >> .config
+        echo "CONFIG_CCACHE=y" >> .config
         #echo "CONFIG_CCACHE_DIR=\"\"" >> .config
         echo "验证开关是否打开..."
         grep CCACHE .config
