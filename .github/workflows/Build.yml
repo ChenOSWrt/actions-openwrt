@@ -142,13 +142,20 @@ jobs:
       if: env.USE_CCACHE == 'true'
       run: |
         cd openwrt
-        HASH=$(find tools toolchain -type f \( -name "*.mk" -o -name "Makefile" \) | sort | xargs cat 2>/dev/null | sha256sum | cut -c1-16)
-        [ "$HASH" = "$(cat ${{ env.CACHE_SYNC }}/tools_toolchain.hash 2>/dev/null)" ] && \
-        [ -d staging_dir/host ] && \
-        [ -n "$(ls -d staging_dir/toolchain-* 2>/dev/null)" ] && \
-        mkdir -p tools toolchain && \
-        printf "%%:\n\t@true\n" > tools/Makefile && \
-        printf "%%:\n\t@true\n" > toolchain/Makefile || true
+        # 计算当前哈希
+        HASH=$(find tools toolchain -type f \( -name "*.mk" -o -name Makefile \) | sort |
+        xargs cat 2>/dev/null | sha256sum | cut -c1-16)
+        # 对比备份哈希
+        if [ "$HASH" = "$(cat ${{ env.CACHE_SYNC }}/tools_toolchain.hash 2>/dev/null)" ] && \
+           [ -d staging_dir/host ] && \
+           [ -n "$(ls -d staging_dir/toolchain-* 2>/dev/null)" ]; then
+          echo "✅ 缓存有效，将自动跳过tools和toolchain"
+          mkdir -p tools toolchain
+          printf "%%:\n\t@true\n" > tools/Makefile
+          printf "%%:\n\t@true\n" > toolchain/Makefile
+        else
+          echo "⚠️  缓存无效/首次编译，将完整编译tools和toolchain"
+        fi
   
     - name:  编译OpenWrt固件
       id: compile
@@ -171,7 +178,7 @@ jobs:
         bash scripts/rsync.sh backup dl          /workdir/openwrt/dl          ${{ env.CACHE_SYNC }}/dl
         bash scripts/rsync.sh backup staging_dir /workdir/openwrt/staging_dir ${{ env.CACHE_SYNC }}/staging_dir
         bash scripts/rsync.sh backup ccache      /workdir/openwrt/.ccache     ${{ env.CACHE_SYNC }}/ccache
-        # 验证跳过tools和toolchain关键
+        # 备份哈希值
         (cd openwrt && find tools toolchain -type f \( -name "*.mk" -o -name Makefile \) | sort \
         | xargs cat 2>/dev/null | sha256sum | cut -c-16) > "${{ env.CACHE_SYNC }}/tools_toolchain.hash"
         
