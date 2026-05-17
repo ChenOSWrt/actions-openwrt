@@ -137,6 +137,11 @@ jobs:
         # 列出和删除小于1024字节的无效文件
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
+
+    - name: 彻底跳过 tools 和 toolchain
+      run: |
+        cd openwrt
+        rm -rf tools toolchain
         
     - name:  编译OpenWrt固件
       id: compile
@@ -145,28 +150,8 @@ jobs:
         CCACHE_DIR=/workdir/openwrt/.ccache ccache -z
         export SOURCE_DATE_EPOCH=1704067200
 
-        make defconfig
-        make -j$(nproc) world \
-          --eval 'tools/compile:; @true' \
-          --eval 'tools/install:; @true' \
-          --eval 'tools/prereq:; @true' \
-          --eval 'toolchain/compile:; @true' \
-          --eval 'toolchain/install:; @true' \
-          --eval 'toolchain/prereq:; @true' \
-          || make -j1 world \
-          --eval 'tools/compile:; @true' \
-          --eval 'tools/install:; @true' \
-          --eval 'tools/prereq:; @true' \
-          --eval 'toolchain/compile:; @true' \
-          --eval 'toolchain/install:; @true' \
-          --eval 'toolchain/prereq:; @true' \
-          || make -j1 V=s world \
-          --eval 'tools/compile:; @true' \
-          --eval 'tools/install:; @true' \
-          --eval 'tools/prereq:; @true' \
-          --eval 'toolchain/compile:; @true' \
-          --eval 'toolchain/install:; @true' \
-          --eval 'toolchain/prereq:; @true'
+        make -j$(nproc) || make -j1 || make -j1 V=s  
+
 
         
         # 成功编译标记
