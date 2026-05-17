@@ -168,6 +168,7 @@ jobs:
     - name: 备份编译数据
       if: env.USE_CCACHE == 'true' && steps.compile.outputs.status == 'success' && !cancelled()
       run: |
+        cd openwrt && find tools toolchain -name "*.mk" -o -name "Makefile" | sort | xargs cat | sha256sum | cut -c1-16 > ${{ env.CACHE_SYNC }}/tools_toolchain.hash
         bash scripts/rsync.sh backup dl          /workdir/openwrt/dl          ${{ env.CACHE_SYNC }}/dl
         bash scripts/rsync.sh backup staging_dir /workdir/openwrt/staging_dir ${{ env.CACHE_SYNC }}/staging_dir
         bash scripts/rsync.sh backup ccache      /workdir/openwrt/.ccache     ${{ env.CACHE_SYNC }}/ccache
