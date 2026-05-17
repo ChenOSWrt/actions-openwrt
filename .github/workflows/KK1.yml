@@ -137,6 +137,22 @@ jobs:
         # 列出和删除小于1024字节的无效文件
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
+
+    - name: 跳过 tools & toolchain 编译
+      run: |
+        cd openwrt
+        # 跳过 tools
+        mkdir -p staging_dir/host/stamp build_dir/host
+        find tools -name 'Makefile' | while read mk; do
+          pkg=$(dirname "$mk" | sed 's|tools/||')
+          touch staging_dir/host/stamp/${pkg}.*
+        done
+
+        # 跳过 toolchain（关键！）
+        mkdir -p staging_dir/host/stamp
+        touch staging_dir/host/stamp/toolchain.*
+        touch staging_dir/host/stamp/target-toolchain.*
+        touch staging_dir/host/stamp/toolchain-install.*
   
     - name:  编译OpenWrt固件
       id: compile
