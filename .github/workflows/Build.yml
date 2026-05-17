@@ -77,7 +77,7 @@ jobs:
         # 赋予工作目录权限
         sudo chown $USER:$GROUPS /workdir "${{ env.CACHE_SYNC }}"
 
-    - name: 恢复编译加速数据
+    - name: 恢复Cache缓存数据
       if: env.USE_CCACHE == 'true'
       uses: actions/cache@v5
       with:
@@ -96,7 +96,7 @@ jobs:
         # 创建软链接，方便后续调用
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
-    - name: 同步编译加速数据
+    - name: 同步Cache缓存数据
       if: env.USE_CCACHE == 'true'
       run: |
         bash scripts/rsync.sh sync dl          "${{ env.CACHE_SYNC }}/dl"          /workdir/openwrt/dl
@@ -127,7 +127,7 @@ jobs:
         #sed -i '/CONFIG_CCACHE/d' .config
         echo "CONFIG_CCACHE=y" >> .config
         #echo "CONFIG_CCACHE_DIR=\"\"" >> .config
-        echo "验证开关是否打开..."
+        echo "⚠️ 验证开关是否打开..."
         grep CCACHE .config
         
     - name: 下载编译所需源码包
@@ -138,7 +138,7 @@ jobs:
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
-    - name: 自动检测是否进入编译加速
+    - name: 自动检测Cache缓存加速
       if: env.USE_CCACHE == 'true'
       run: |
         cd openwrt
@@ -149,12 +149,12 @@ jobs:
         if [ "$HASH" = "$(cat ${{ env.CACHE_SYNC }}/tools_toolchain.hash 2>/dev/null)" ] && \
            [ -d staging_dir/host ] && \
            [ -n "$(ls -d staging_dir/toolchain-* 2>/dev/null)" ]; then
-          echo "✅ 缓存有效，将自动跳过tools和toolchain"
+          echo "✅ Cache缓存有效，将进入加速编译..."
           mkdir -p tools toolchain
           printf "%%:\n\t@true\n" > tools/Makefile
           printf "%%:\n\t@true\n" > toolchain/Makefile
         else
-          echo "⚠️  缓存无效/首次编译，将完整编译tools和toolchain"
+          echo "⚠️  Cache缓存无效/首次编译，将完整编译..."
         fi
   
     - name:  编译OpenWrt固件
@@ -173,7 +173,7 @@ jobs:
         # 生成时间戳写入环境变量
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
-    - name: 备份编译加速数据
+    - name: 备份Cache缓存数据
       if: env.USE_CCACHE == 'true' && steps.compile.outputs.status == 'success' && !cancelled()
       run: |
         bash scripts/rsync.sh backup dl          /workdir/openwrt/dl          ${{ env.CACHE_SYNC }}/dl
@@ -183,7 +183,7 @@ jobs:
         (cd openwrt && find tools toolchain -type f \( -name "*.mk" -o -name Makefile \) | sort \
         | xargs cat 2>/dev/null | sha256sum | cut -c-16) > "${{ env.CACHE_SYNC }}/tools_toolchain.hash"
         
-    - name: 查看编译加速数据
+    - name: 查看Cache缓存数据
       if: env.USE_CCACHE == 'true'
       run: |
         echo -e "⚠️ 缓存软件版本"
@@ -253,7 +253,7 @@ jobs:
         KEEP_LATEST: 5
         KEEP_DAYS: 30
 
-    - name: 清理旧缓存记录
+    - name: 清理旧Cache缓存记录
       if: always()
       run: bash scripts/clean.sh
       env:
