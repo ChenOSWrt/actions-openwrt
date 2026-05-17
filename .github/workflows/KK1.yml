@@ -147,7 +147,7 @@ jobs:
 
         make defconfig
 
-        make -j$(nproc) package/host/compile package/compile target/install || make -j1 package/host/compile package/compile target/install || make -j1 V=s package/host/compile package/compile target/install
+        make -j$(nproc) world -W tools/install -W toolchain/install || make -j1 world -W tools/install -W toolchain/install || make -j1 V=s world -W tools/install -W toolchain/install
         # 成功编译标记
         echo "status=success" >> $GITHUB_OUTPUT
         # 提取当前编译的设备型号
