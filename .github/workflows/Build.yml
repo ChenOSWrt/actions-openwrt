@@ -14,11 +14,6 @@ on:
   # 支持Actions页面手动触发
   workflow_dispatch:
 
-# 权限配置
-permissions:
-  contents: write
-  packages: write
-
 jobs:
   scan:
     runs-on: ubuntu-22.04
