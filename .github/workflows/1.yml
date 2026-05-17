@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Restore the target cache
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@v5
         with:
           # 这里填你截图里的缓存key
           key: Linux-sync-nanopc_t6-25964126010
