@@ -82,9 +82,9 @@ jobs:
       uses: actions/cache@v5
       with:
         path: ${{ env.CACHE_SYNC }}
-        key: ${{ env.SOURCE_NAME }}-sync-${{ matrix.device }}-
+        key: ${{ env.SOURCE_NAME }}-sync-${{ matrix.device }}
         restore-keys: |
-          ${{ env.SOURCE_NAME }}-sync-${{ matrix.device }}-
+          ${{ env.SOURCE_NAME }}-sync-${{ matrix.device }}
   
     - name: 克隆OpenWrt源码
       working-directory: /workdir
@@ -177,7 +177,7 @@ jobs:
       if: env.USE_CCACHE == 'true' && steps.compile.outputs.status == 'success' && !cancelled()
       run: |
         bash scripts/rsync.sh backup dl          /workdir/openwrt/dl          ${{ env.CACHE_SYNC }}/dl
-        # bash scripts/rsync.sh backup staging_dir /workdir/openwrt/staging_dir ${{ env.CACHE_SYNC }}/staging_dir
+        bash scripts/rsync.sh backup staging_dir /workdir/openwrt/staging_dir ${{ env.CACHE_SYNC }}/staging_dir
         bash scripts/rsync.sh backup ccache      /workdir/openwrt/.ccache     ${{ env.CACHE_SYNC }}/ccache
         # 备份哈希值
         (cd openwrt && find tools toolchain -type f \( -name "*.mk" -o -name Makefile \) | sort \
